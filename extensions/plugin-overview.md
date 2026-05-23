@@ -71,6 +71,28 @@ class MyPlugin(PluginBase):
         ...
 ```
 
+### 定时触发（Schedule）
+
+从 v1.3 开始，插件可以通过声明式类属性 `_plugin_schedule` 定义定时任务，系统会自动将其转换为定时事件，无需手动编写事件循环：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `time` | `str` | 每天触发的时间，格式 `HH:MM`（24h） |
+| `duration` | `int` | 触发窗口时长（分钟），默认 1440（全天） |
+
+示例：
+
+```python
+class ReminderPlugin(PluginBase):
+    _plugin_schedule = [
+        {"time": "08:00", "duration": 1440},   # 每天 08:00 触发，触发窗口一天
+        {"time": "12:00", "duration": 60},     # 每天 12:00 触发，窗口 1 小时
+    ]
+    # 其余插件逻辑...
+```
+
+声明后，`PluginDefinition.from_class()` 会将每个条目自动转换为 `PluginEventDef`（类型 `timer.schedule`），与通过 `_plugin_events` 手动定义的事件合并。定时调度会在插件加载时注册到后台调度器。
+
 ## 系统架构
 
 ```mermaid
@@ -87,7 +109,7 @@ flowchart TB
 
     C --> C1[扫描 plugins/ 目录]
     C --> C2[import_plugin_class<br>找到 PluginBase 子类]
-    C --> C3["PluginDefinition.from_class()<br>构建定义"]
+    C --> C3["PluginDefinition.from_class()<br>构建定义，含 _plugin_schedule → 定时事件"]
     C --> C4["安装依赖<br>AST 解析 _plugin_dependencies"]
 
     D --> D1["权限校验<br>_check_permissions"]
@@ -111,11 +133,11 @@ flowchart TB
 |---|---|---|
 | **调用者** | 用户显式命令 | AI 自主决定 |
 | **语法** | `/command args` | `[SKILL_CALL: ...]` |
-| **触发方式** | 文本模式匹配 | LLM 意图驱动 |
-| **开发范式** | 继承 PluginBase + @command | 函数 + SKILL_META |
+| **触发方式** | 文本模式匹配 / 定时调度 | LLM 意图驱动 |
+| **开发范式** | 继承 PluginBase + @command / _plugin_schedule | 函数 + SKILL_META |
 | **输出** | direct / llm / silent | 注入 LLM 上下文 |
 | **权限** | 细粒度（群黑名单、速率限制） | developer_only 标记 |
-| **适用** | 固定功能、快速命令 | AI 辅助工具调用 |
+| **适用** | 固定功能、快速命令 / 定时任务 | AI 辅助工具调用 |
 
 ## 下一步
 

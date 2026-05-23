@@ -145,6 +145,27 @@ async def echo(self, message: str, count: int = 1, uppercase: bool = False):
 - 布尔标志 → 从 `cmd.flags` 匹配（`--uppercase` 不用带值）
 - 类型转换：`int` / `float` / `bool` / `str` / `list[str]` 自动转换
 
+## 定时任务声明
+
+除了通过指令触发，插件还可以声明定时任务，在指定时间自动执行。使用类属性 `_plugin_schedule` 定义：
+
+```python
+class MyTimerPlugin(PluginBase):
+    _plugin_schedule = [
+        {"time": "08:00", "duration": 1440},   # 每日 08:00 触发，持续 24 小时
+        {"time": "18:00", "duration": 60},      # 每日 18:00 触发，持续 1 小时
+    ]
+```
+
+每个条目支持以下字段：
+
+| 字段       | 类型 | 必填 | 默认值 | 说明                         |
+|------------|------|------|--------|------------------------------|
+| `time`     | str  | 是   | —      | 触发时间，格式 `HH:MM`（24 小时制） |
+| `duration` | int  | 否   | 1440   | 持续时间（分钟），0 表示单次触发  |
+
+系统会根据 `time` 生成 cron 表达式（如 `08:00` → `0 8 * * *`），并与 `duration` 一同注册为定时事件。定时事件的处理方法请参考 [生命周期与上下文](./plugin-lifecycle) 中的事件系统。
+
 ## 异步方法
 
 可以用 `async def` 声明异步 handler：
