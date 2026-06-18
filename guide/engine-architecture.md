@@ -148,6 +148,8 @@ flowchart TB
 
 非立即回复进入延迟队列，在确认窗口后释放。支持队列合并（连续发送多条消息时合并为一条回复）。
 
+队列释放最终回复时，如果最后一次部分回复（partial reply）刚发送不久，引擎会依据 `partial_reply_lead_seconds` 配置（默认 1.5 秒）等待足够时间，确保客户端有足够时间渲染部分回复内容，避免最终回复与部分回复之间出现视觉跳跃。
+
 ## 消息钉住系统（PinnedMessageManager）
 
 消息钉住系统允许 AI 根据对话语境主动“钉住”重要消息，在后续多条回复的 prompt 中自动注入，确保关键信息不被遗忘。
@@ -195,7 +197,7 @@ AI 在回复内容中可以通过特定语法控制钉住行为：
 
 Brain 是引擎的 LLM 调用层，支持：
 
-- **任务路由**: 根据 task_name（response_generate, cognition_analyze, proactive_generate）选择合适的模型
+- **任务路由**: 根据 task_name（response_generate, cognition_analyze, proactive_generate, sidekick_execute）选择合适的模型。其中聊天类任务（`response_generate`、`sidekick_execute`、`proactive_generate`）使用聊天模型，其他任务使用各自配置的模型。
 - **Post-Hooks 链**: 回复生成后的后置处理，按优先级执行：
 
 | 优先级 | Hook | 功能 |
@@ -211,6 +213,58 @@ Brain 是引擎的 LLM 调用层，支持：
 | 50 | `_hook_timestamp` | 回复时间戳 + 持久化 |
 
 > 回复生成的 `ChatResult` 对象包含 `system_prompt` 字段（存储本次对话使用的完整 system prompt）和 `reply_references` 字段（存储引用回复信息，由 `_hook_reply_reference` 填充），这些字段后续会被写入 basic_store 的 entry 中。
+
+Brain 的默认 pre-hooks 顺序为：人格注入 → 语气对齐 → 模型路由 → 风格覆盖 → 构建请求 → 当前时间追加。其中当前时间 section 被附加到 system_prompt 的末尾，而不是开头。对于主动行为以及工具循环中的重新调用，同样会在 system_prompt 末尾追加当前时间。
+
+## 小跟班任务处理（Sidekick Task Processing）
+
+引擎提供 `process_sidekick_task` 方法，用于处理“小跟班”任务——即其他 AI 机器人（宿主）委托本 Bot 执行特定任务。该流程跳过常规的社交决策管线（阈值、策略等），直接使用 LLM 执行任务。
+
+### 调用入口
+
+`process_sidekick_task(
+    host_user_id: str,
+    host_nickname: str,
+    task_text: str,
+    group_id: str,
+    message_type: str = "group",
+    platform_message_id: str = "",
+    at_user_ids: list[str] | None = None,
+    mention_all: bool = False
+) -> dict[str, Any]`
+
+返回与 `process_message` 兼容的 dict：`{"reply": str, "partial_replies": list, "message_group": Any, "reply_references": list}`。
+
+### 处理流程
+
+1. **用户登记**：将宿主（其他 AI）作为普通用户注册到 `basic_memory` 中，使用 `sender_type="other_ai"`。
+2. **构建 Prompt**：调用 `PromptFactory.assemble_sidekick_task_prompt` 生成小跟班任务系统 prompt，可选项包括技能注册表、宿主是否信任为开发者、适配器类型等。
+3. **上下文组装**：使用 `ContextAssembler` 构建完整的消息历史（包含群组上下文和系统 prompt）。
+4. **LLM 调用**：通过 `Brain.chat` 使用 `task_name="sidekick_execute"` 调用聊天模型。
+5. **技能执行循环**：如果 LLM 返回 tool calls，则循环执行技能（最多 `max_skill_rounds` 轮），支持技能白名单/黑名单控制。
+6. **不执行 Post-Hooks**：小跟班任务不经过引擎的 post hooks（钉住、表情包、去重等），直接返回纯文本回复。
+
+### 配置
+
+在 `experience.json` 或人格配置中可通过 `sidekick` 键配置：
+
+```json
+{
+  "sidekick": {
+    "max_skill_rounds": 3,
+    "enable_skills": true,
+    "trust_host_as_developer": false,
+    "allowed_skills": ["query_weather", "search"],
+    "denied_skills": ["dangerous_op"]
+  }
+}
+```
+
+- `max_skill_rounds`：最大技能调用轮数（默认 3）
+- `enable_skills`：是否允许调用技能（默认 true）
+- `trust_host_as_developer`：是否将宿主视为开发者（允许调用敏感技能，默认 false）
+- `allowed_skills`：白名单（空则全部允许）
+- `denied_skills`：黑名单（优先于白名单）
 
 ## 后台任务
 
