@@ -45,7 +45,7 @@
 
 每个子任务可单独配置 model、temperature、max_tokens，通过点击 ⚙ 展开高级面板。
 
-可覆盖的任务：`cognition_analyze`、`memory_extract`、`response_generate`、`proactive_generate`、`passive_skill`、`github_monitor_notify`、`diary_generate`、`diary_consolidate`、`biography_distill`、`biography_update`、`plugin_generate`、`plugin_analyze`、`plugin_render`、`plugin_raw`。
+可覆盖的任务：`cognition_analyze`、`memory_extract`、`response_generate`、`proactive_generate`、`passive_skill`、`github_monitor_notify`、`diary_generate`、`diary_consolidate`、`biography_distill`、`biography_update`、`plugin_generate`、`plugin_analyze`、`plugin_render`、`plugin_raw`、`sidekick_execute`。
 
 完整列表参见 [引擎架构](/guide/engine-architecture)。
 
@@ -87,3 +87,4 @@
 | 技能超时 | `30` (s) | 技能执行超时 |
 | 插件超时 | `30` (s) | 插件执行超时 |
 | 消息钉住最大携带次数 | `100` | 钉住消息在每次 prompt 中携带的次数上限，超过后自动取消 |
+| 偏回复领先秒数 | `1.5` (s) | 工具执行完成后，最终回复前等待的最小时间，确保客户端显示完中间回复 |
