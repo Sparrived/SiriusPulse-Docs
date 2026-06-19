@@ -309,14 +309,16 @@ sequenceDiagram
 
 ### 5.1 引擎后台任务
 
-引擎内置 8 个后台任务，另有被动 SKILL 注册的任务（如 reminder）并行运行：
+引擎内置 8 个后台任务，另有被动 SKILL 注册的任务（如 reminder）并行运行。
+
+> 新增配置项：`memory_idle_consolidation_seconds`（默认 3600 秒）控制冷寂状态下的日记生成是否包含最近对话上下文。当群聊处于冷寂状态且静默时长超过此阈值时，候选消息将包含上下文信息，否则仅使用消息内容本身。
 
 ```mermaid
 flowchart LR
     subgraph BG["内置后台任务（并行运行）"]
         T1["任务1<br/>延迟队列 ticker<br/>智能休眠（3-30s）"]
         T2["任务2<br/>主动触发 checker<br/>每 60 秒"]
-        T3["任务3<br/>日记生成 promoter（含情景提取与补提）<br/>每 180 秒"]
+        T3["任务3<br/>日记生成 promoter（冷寂时从候选消息直接生成日记）<br/>每 180 秒"]
         T4["任务4<br/>日记 consolidator<br/>每 600 秒"]
         T5["任务5<br/>开发者私聊 checker<br/>每 60 秒"]
         T6["任务6<br/>表情包新鲜度更新<br/>每 3600 秒"]
