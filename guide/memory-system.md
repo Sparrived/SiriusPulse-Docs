@@ -146,7 +146,37 @@ per-group deque:
 
 ## 语义记忆（Semantic Memory）
 
-...（原语义记忆内容不变）
+基于群聊统计的长期记忆系统，追踪群聊的氛围规范与用户交互行为（不依赖向量检索）。
+
+### 存储层级
+
+| 层级 | 范围 | 说明 |
+|------|------|------|
+| `group` | 单个群聊 | 群氛围、规范、活跃时段、平均消息长度、表情/提及率、兴趣话题、禁忌话题、主导话题 |
+| `user` | 单个用户在某群 | 互动率（engagement_rate）、交互次数、熟悉度、反馈追踪 |
+
+群聊画像数据存储在 `group_semantic_profiles` 表中，除上述信息外还包括 `group_name`、`interest_topics`（兴趣话题）、`group_norms`（群规范详情）、`taboo_topics`（禁忌话题）、`dominant_topic`（主导话题）等字段。
+
+此外，系统会持续追踪群聊的动态氛围和历史交互反馈，存储在以下两张表中：
+
+- **`atmosphere_history`**：记录群聊氛围的时间序列，包含 `group_valence`（情绪效价）、`group_arousal`（唤醒度）、`active_participants`（活跃参与者数）等指标。
+- **`group_pending_ai_responses`**：记录 AI 发送给群聊的消息及其后续用户互动情况，用于评估响应效果和学习互动模式。包含 `sent_at`、`target_user_id`、`topic_hint`、`response_length`、`was_engaged`、`engagement_latency_s` 等字段。
+
+这些数据为认知引擎的决策提供依据，例如根据氛围历史调整响应策略，或者根据用户对 AI 消息的回应情况动态调整参与度。
+
+### 用户交互追踪
+
+通过 `record_user_interaction()` 实时追踪每个用户的交互模式：
+- **engagement_rate**：基于 EMA（指数移动平均）计算的互动响应率
+- **interaction_count**：精确交互计数器
+- **familiarity**：基于对数曲线的熟悉度（`log1p(n) / log1p(50)`）
+- **pending_responses**：消息级反馈队列（用于检测用户是否响应了 AI 的发言）
+
+### 记忆记录
+
+回复生成后，`_hook_memory` 会写入 basic_memory 和 semantic_memory：
+- 自己的回复 → 记录群聊互动状态
+- 用户的消息 → 更新用户交互统计
 
 ## 演化链（Evolution Chain）
 
@@ -200,46 +230,6 @@ per-group deque:
 1. 新事实写入演化链（情景提取 / 日记 / 交互处理）
 2. `UnifiedUserManager` 从演化链中查询与用户相关的高置信度记录
 3. 定期调用 LLM 综合演化链事实重写 `short_bio`、`identity_anchors`、`relationships`
-
-基于群聊统计的长期记忆系统，追踪群聊的氛围规范与用户交互行为（不依赖向量检索）。
-
-### 存储层级
-
-| 层级 | 范围 | 说明 |
-|------|------|------|
-| `group` | 单个群聊 | 群氛围、规范、活跃时段、平均消息长度、表情/提及率、兴趣话题、禁忌话题、主导话题 |
-| `user` | 单个用户在某群 | 互动率（engagement_rate）、交互次数、熟悉度、反馈追踪 |
-
-群聊画像数据存储在 `group_semantic_profiles` 表中，除上述信息外还包括 `group_name`、`interest_topics`（兴趣话题）、`group_norms`（群规范详情）、`taboo_topics`（禁忌话题）、`dominant_topic`（主导话题）等字段。
-
-此外，系统会持续追踪群聊的动态氛围和历史交互反馈，存储在以下两张表中：
-
-- **`atmosphere_history`**：记录群聊氛围的时间序列，包含 `group_valence`（情绪效价）、`group_arousal`（唤醒度）、`active_participants`（活跃参与者数）等指标。
-- **`group_pending_ai_responses`**：记录 AI 发送给群聊的消息及其后续用户互动情况，用于评估响应效果和学习互动模式。包含 `sent_at`、`target_user_id`、`topic_hint`、`response_length`、`was_engaged`、`engagement_latency_s` 等字段。
-
-这些数据为认知引擎的决策提供依据，例如根据氛围历史调整响应策略，或者根据用户对 AI 消息的回应情况动态调整参与度。
-
-### 学习机制
-
-引擎在认知阶段会调用 `semantic_memory.learn_from_message()` 自动学习群聊特征：
-- 消息长度分布（short / medium / long）
-- 表情使用率和提及率
-- 活跃时段分布
-- 社交意图频率分布
-
-### 用户交互追踪
-
-通过 `record_user_interaction()` 实时追踪每个用户的交互模式：
-- **engagement_rate**：基于 EMA（指数移动平均）计算的互动响应率
-- **interaction_count**：精确交互计数器
-- **familiarity**：基于对数曲线的熟悉度（`log1p(n) / log1p(50)`）
-- **pending_responses**：消息级反馈队列（用于检测用户是否响应了 AI 的发言）
-
-### 记忆记录
-
-回复生成后，`_hook_memory` 会写入 basic_memory 和 semantic_memory：
-- 自己的回复 → 记录群聊互动状态
-- 用户的消息 → 更新用户交互统计
 
 ## 统一用户模型（UnifiedUser）
 
@@ -374,10 +364,8 @@ AI 在回复中使用特殊语法来钉住或取消钉住消息：
 flowchart TB
     A["用户发消息: 今天天气真好"] --> B["Perception<br>add_entry(basic_memory), resolve user_id"]
     B --> C["Cognition"]
-    C --> C1["learn_from_message<br>群聊统计学习"]
     C --> C2["diary_retriever.retrieve<br>天气 → 找到上周郊游日记"]
-    C1 --> D["ContextAssembler.build_messages()"]
-    C2 --> D
+    C2 --> D["ContextAssembler.build_messages()"]
     D --> D1["basic_memory.get_context(5)<br>最近5条对话"]
     D --> D2["diary entries<br>相关日记"]
     D --> D3["biography<br>人物画像"]
@@ -388,6 +376,4 @@ flowchart TB
 
 ### 插件命令快速拦截
 
-在处理流程中，插件命令（如 `/ca analyse`）会在认知阶段之前被快速拦截，避免被 LLM 当作自然语言处理，无需 LLM 调用即可执行，降低延迟。
-
-详见 [引擎架构](./engine-architecture) 了解记忆在管线中的位置。
+在处理流程中，
