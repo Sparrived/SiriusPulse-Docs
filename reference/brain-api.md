@@ -37,6 +37,7 @@ async def chat(self, request: ChatRequest) -> ChatResult
 | | 模型路由 | `rhythm_analyzer` + `model_router` 选择模型 |
 | | 风格覆盖 | 设置 temperature / max_tokens |
 | | 构建请求 | 组装 `GenerationRequest` |
+| | 技能工具过滤 | 移除 `disabled_skill_names` 指定的工具 |
 | LLM 调用 | `provider.generate_async()` | 带 transport 级重试 |
 | 内置后处理 | XML 剥离 | 移除 `<conversation_history>` 等标签 |
 | | SKIP 检测 | 检测 `<skip/>` 标签 |
@@ -154,6 +155,7 @@ class ChatRequest:
 
     enable_skills: bool = True       # 是否启用 SKILL
     caller_is_developer: bool = False
+    disabled_skill_names: set[str] = field(default_factory=set)  # 禁用的技能名称集合
 
     post_process: bool = False       # True=启用 hook 调度（总闸）
     retry_max: int = 1               # 最大重试次数
@@ -164,6 +166,7 @@ class ChatRequest:
 - `post_process`：hook 总闸。设为 `True` 才会触发 pre-hooks 和 post-hooks。`generate_text()` 等便捷方法默认关闭此开关。
 - `task_name`：影响模型路由选择，也用于 `task_filter` 匹配。
 - `enable_skills`：设为 `False` 可临时禁用 SKILL_CALL 能力。
+- `disabled_skill_names`：技能名称集合，设为非空集合可临时禁用指定的技能工具。例如 `{"send_sticker"}` 可禁用发送表情包。
 
 ---
 
@@ -306,6 +309,7 @@ brain.register_pre_hook(auto_translate, priority=0)
 | **hook 是同步函数** | 签名返回 `None`，不能直接 `await`。如需异步操作，使用 `asyncio.create_task` |
 | **post_process 总闸** | `ChatRequest.post_process=False` 时所有 hook 完全跳过。`generate_text()` 便捷方法默认关闭此开关，且返回 clean_text（经过后处理的纯净文本）。 |
 | **仅 chat() 通道生效** | `raw_call()` 通道没有任何 hook，人格注入和后处理也全部跳过 |
+| **disabled_skill_names 过滤** | 在 LLM 调用前，会从工具列表中移除 `ChatRequest.disabled_skill_names` 中指定的技能名称。仅影响 `chat()` 通道。 |
 | **task_filter 路由** | 设为 `{"response_generate"}` 可让 hook 仅在 AI 回复生成时触发，不影响分析任务 |
 | **ctx 字典生命周期** | 每次 `chat()` 调用创建一个新的空字典，pre-hook 写入的 ctx 在 post-hook 中可见，调用结束后释放 |
 | **多个 hook 注册** | 可按需注册任意多个 hook，按 priority 排序依次执行。同 priority 的按注册顺序执行 |

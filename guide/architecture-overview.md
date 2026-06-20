@@ -219,6 +219,8 @@ flowchart TD
 > **插件命令快速拦截**：引擎新增插件命令拦截机制。在感知层完成消息记录后、认知层进行 LLM 或规则分析之前，引擎会检查消息内容是否匹配已注册的插件命令（如 `/ca analyse`）。若匹配，则直接执行插件逻辑并返回结果，避免了 LLM 对命令模式的错误理解。此步骤完全基于规则，零 LLM 成本，确保插件命令的及时响应。
 >
 > **引用消息解析**：NapCatAdapter 在解析消息段时，新增引用消息（reply 类型）的处理。当检测到回复段时，Adapter 会通过 NapCat API `get_msg` 获取被引用消息的内容和发送者信息，并将其格式化为 `[引用消息 msg_id="xxx" speaker="张三"] 内容 [/引用消息]` 注入到 prompt 中。这确保了 AI 在生成回复时能理解回复的上下文。此步骤完全基于规则，零 LLM 成本。
+>
+> **工具过滤支持**：v1.5 起，`Brain.chat()` 接受 `disabled_skill_names` 参数，用于在单次对话中禁用特定工具（如 `send_sticker`）。在构建请求时，Brain 会自动从工具列表中移除被禁用的工具，确保模型不会调用它们。该机制在延迟回复的 sticker-only 重试中被使用：当模型仅选择发送表情包时，引擎会发起一次不带 `send_sticker` 工具的文本重试，强制模型产出文字回复。
 
 ### 4.2 认知层内部细节
 
@@ -293,6 +295,8 @@ sequenceDiagram
 > **v1.3 Hook 统一处理**：延迟回复的最终回复处理（表情包解析、去重、记忆记录、时间戳更新）已全部移入 `Brain` 的 post‑hooks，不再由 `DelayedQueueTasks` 内部手动管理。因此 `delayed_response_queue` 中的 `sticker_names`、`clean_text` 等字段直接依赖 `ChatResult` 中 hook 处理后的结果。
 >
 > **统一消息标签**：v1.4 起，所有 `<message>` XML 标签统一通过 `PromptFactory.tag_message()` 生成，保证格式一致。新增 `platform_message_id` 参数，用于缓存一致性和引用回复，该参数在延迟队列、即时回复、上下文组装中均会传递。
+>
+> **Sticker-only 重试**：v1.5 起，当延迟回复的 LLM 调用仅返回 `send_sticker` 工具调用而无任何文字内容时，`DelayedQueueTasks` 会自动发起一次文本重试。重试时系统提示会追加一段指示（不再调用 `send_sticker`），同时 `disabled_skill_names` 设置为 `{"send_sticker"}`，强制模型产出文字回复。此机制确保纯表情包回复不会丢失文字上下文，且不会陷入工具死循环。
 
 ### 4.4 四种响应策略的触发条件
 
