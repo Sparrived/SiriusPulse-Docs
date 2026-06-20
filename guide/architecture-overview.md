@@ -193,7 +193,7 @@ flowchart TD
         X1 --"SILENT"--> X4["仅更新内部状态<br/>不生成回复"]
         X1 --"PROACTIVE"--> X5["由 ProactiveTrigger 外部触发<br/>生成自然开场白"]
         X2 --> X6["PromptFactory.assemble_chat()<br/>组装 prompt"]
-        X6 --> X7["StyleAdapter 输出长度/语气指令"]
+        X6 --> X7["StyleAdapter 输出语气指令"]
         X7 --> X8["ModelRouter 选择模型"]
         X8 --> X9["Brain.chat()<br/>→ 获取串行锁<br/>→ 构建 gen_request<br/>→ _call_with_retry(rebuild_fn)<br/>→ Provider.generate_async()"]
         X9 --> X10["解析 function_call (tools)"]
@@ -201,7 +201,7 @@ flowchart TD
         X11 --> X12["emit EXECUTION_COMPLETED"]
     end
 
-    X12 --> U["_background_update()<br/>更新群体氛围 + 群规范学习 + 反馈结算 + 情感孤岛检测"]
+    X12 --> U["_background_update()<br/>更新群体氛围 + 反馈结算 + 情感孤岛检测"]
 ```
 
 > **新增持久化说明**：在 `BasicMemoryManager.add_entry()` 步骤中，消息不仅被加入内存窗口（最近 30 条），还会通过 `engine.basic_store.append()` 持久化到磁盘。这意味着即使引擎重启，基本记忆仍然可以恢复，对话上下文不会丢失。此持久化同样适用于 AI 回复记录和 SKILL 执行结果。
