@@ -175,6 +175,10 @@ GET /api/personas/{name}/conversations
 
 `conversation_chain` 字段（仅 `assistant` 角色消息拥有）记录了该条回复生成时使用的完整 LLM 调用消息链，格式为一个数组，每个元素包含 `role` 和 `content` 字段，用于调试和追溯。
 
+`received_during_bot_send` 字段（布尔值）表示该消息是否在 Bot 正在发送多段回复时到达，用于避免打断逻辑。
+
+`mentions_current_bot` 字段（布尔值）表示该消息是否明确提到或 @ 了当前 Bot 的名称或别名。
+
 ## Plugin 管理
 
 ### 获取插件列表
