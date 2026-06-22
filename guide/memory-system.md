@@ -77,6 +77,8 @@ per-group deque:
 - `COOLING` → 情景提取（Situation Extraction）：对近期对话进行结构化摘要
 - `COLD` → 优先从 `situation_store` 获取未处理的已提取情景（Situation），若有则基于这些情景生成日记并切分为切片，之后标记情景为已处理；若无情景则尝试从 basic_memory 的候选消息中补提情景（补提后再次获取情景），补提仍无结果时回退到旧逻辑：将旧消息归档为日记，同时通过 LLM 提取三元组存入演化链。
 
+**高量候选消息的处理优化**：当 `COLD` 状态下需要归档的候选消息数量超过 `volume_threshold * 2` 时，后台任务会启用话题聚类（Topic Clustering）进行分批处理。`DiaryManager.generate_topic_clustered()` 内部调用 `TopicClusterer` 将候选消息按主题分组，每组分别生成日记条目，避免单次 LLM 调用丢失太多信息。聚类器支持最多 2 次重试，重试时强化 JSON 输出指令；重试耗尽后回退为按时间分批（每批最多 15 条消息）。该能力通过 `generate_topic_clustered()` 暴露，需要同时配置 `topic_cluster` 模型路由。
+
 ## 日记系统（Diary）
 
 当群聊进入 `COLD` 状态时，系统优先使用该群已经提取的情景（Situation）来生成结构化日记。若没有已提取的情景，则尝试从 basic_memory 中超出窗口的旧消息中补提情景，补提成功后生成日记。若仍无法获取情景，则直接归档旧消息为日记。冷状态由 `ColdDetector` 根据热度与沉寂时长综合判定。
@@ -93,6 +95,8 @@ per-group deque:
 | `DiarySliceStore` | 日记切片的文件持久化存储（JSON 文件，按群组索引），支持按 ID 批量删除（`delete_by_ids`） |
 | `DiarySliceVectorStore` | 日记切片向量的 ChromaDB 持久化索引 |
 | `DiarySliceRetriever` | 日记切片的三路召回检索：语义（ChromaDB）+ 三元组精确匹配 + 关键词降级 |
+| `TopicClusterer` | 话题聚类器，用于高量候选消息的主题分组，支持重试与回退 |
+| `DiaryManager` | 日记管理器，提供 `generate_from_candidates()` 和 `generate_topic_clustered()` 两种归档入口 |
 
 ### 日记切片
 
@@ -329,18 +333,18 @@ AI 在回复中使用特殊语法来钉住或取消钉住消息：
 
 ### 信息注入
 
-钉住消息会在构建 prompt 时被注入到当前用户消息（user message）之前，格式为：
+钉住消息的注入分为两种场景：
 
-```
-【钉住的重要消息】
-- <pinned_message content="..." speaker="..." reason="...">
-```
-
-`ContextAssembler` 在 `build_messages()` 中接收 `pinned_messages` 参数，将钉住消息格式化为 `【钉住的重要消息】` 段落注入到 user 消息头部。主动发起消息时同样会注入钉住上下文。模型不再需要手动调用 `list_pinned_messages` 工具来查看钉住项，因为钉住消息会自动出现在每轮对话的当前消息中。
+- **用户触发消息**：`ContextAssembler` 在 `build_messages()` 中接收 `pinned_messages` 参数，将钉住消息格式化为 `【钉住的重要消息】` 段落注入到 user 消息头部。
+- **主动发起消息（定时任务）**：**不再自动注入钉住消息**。后台主动消息构建时移除了 `pinned_messages` 参数，因此 AI 在主动发起的消息中不会自动看到钉住内容。若需要，AI 可以主动调用 `list_pinned_messages` 工具（该技能仍然可用）来查看。
 
 ### 携带计数与自动过期
 
 每条钉住消息记录 `carry_count`，每次被用于 prompt 注入时加 1。当 `carry_count` 超过 `MAX_CARRY_COUNT` 时，消息自动取消钉住。同时，超过 `MAX_AGE_HOURS` 的消息也会被清理。
+
+### 技能可用性
+
+钉住/取消钉住技能（`pin_message`、`unpin_message`）仍然是可用的 LLM 工具，但已从后台主动消息的自动技能集合中移除，以减少不必要的自动调用。AI 在需要时仍可通过工具选择使用这些技能。
 
 ## 系统提示注入
 
@@ -352,6 +356,12 @@ AI 在回复中使用特殊语法来钉住或取消钉住消息：
 1. **不凭空捏造事实**：LLM 不得编造未在上下文中出现的关于他人的事实。
 2. **推测需带可能性表述**：基于上下文推断事件时，应使用“可能”、“或许”等措辞。
 
+### 当前时间注入
+
+当前日期时间（北京时间，含星期）通过 `Brain` 的 pre-hook 注入到每条对话消息（包括用户消息和主动消息）中的第一个 `user` 角色消息的头部。注入格式由 `PromptFactory.build_current_time_section()` 生成。该注入取代了旧版在消息末尾追加时间的方式，确保 LLM 在理解上下文时优先感知时间信息。
+
+**注意**：语气对齐（Tone Alignment）已被移除，不再作为独立的 prompt 注入步骤。
+
 ## 配置调优
 
 在 `experience.json` 中控制记忆行为：
@@ -360,13 +370,17 @@ AI 在回复中使用特殊语法来钉住或取消钉住消息：
 {
   "memory_depth": 5,
   "cross_group_memory": true,
-  "pinned_message_max_carry_count": 100
+  "pinned_message_max_carry_count": 100,
+  "topic_cluster": {
+    "model": "gpt-4o-mini"
+  }
 }
 ```
 
 - `memory_depth`: 每次加载的历史消息数
 - `cross_group_memory`: 是否启用跨群记忆
 - `pinned_message_max_carry_count`: 钉住消息的最大携带次数，超过后自动取消
+- `topic_cluster`: 话题聚类使用的模型配置（需在 `model_router` 中注册 `topic_cluster` 路由）
 
 ## 数据流示例
 
@@ -388,6 +402,4 @@ flowchart TB
 
 ### 插件命令快速拦截
 
-在处理流程中，插件命令（如 `/ca analyse`）会在认知阶段之前被快速拦截，避免被 LLM 当作自然语言处理，无需 LLM 调用即可执行，降低延迟。
-
-详见 [引擎架构](./engine-architecture) 了解记忆在管线中的位置。
+在处理流程中，

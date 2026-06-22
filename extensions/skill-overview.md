@@ -49,7 +49,7 @@ flowchart TB
 
 > **被动技能类型**：被动技能可细分为**周期型**（periodic，后台定时任务）、**触发型**（trigger，事件驱动）和**兼有型**（both，既定时又触发），通过 `passive_type` 属性区分。
 
-每个技能还可以通过 `model_visible` 属性控制是否对 AI 可见。默认为 `true`，设为 `false` 时，该技能不会出现在 AI 的 tools 列表中，AI 也无法主动调用它。例如，`list_pinned_messages` 技能已设置为 `model_visible=false`，因为钉住的重要消息会自动注入到对话上下文中，不需要 AI 再通过工具查询。
+每个技能还可以通过 `model_visible` 属性控制是否对 AI 可见。默认为 `true`，设为 `false` 时，该技能不会出现在 AI 的 tools 列表中，AI 也无法主动调用它。例如，`list_pinned_messages` 技能已设置为 `model_visible=false`，因为钉住消息的管理由引擎内部处理，不再主动注入对话上下文，AI 无需直接调用。
 
 ### 技能链（Skill Chain）
 
@@ -130,7 +130,7 @@ flowchart TB
 | `list_pinned_messages` | 查看当前钉住消息 | 普通 |
 | `send_sticker` | 发送表情包到当前聊天 | 适配器绑定（silent） |
 
-> 注意：部分技能可能因 `model_visible=false` 而不在列表中展示给 AI，例如 `list_pinned_messages` 已被隐藏，因为钉住消息已自动注入上下文。
+> 注意：部分技能可能因 `model_visible=false` 而不在列表中展示给 AI，例如 `list_pinned_messages` 已被隐藏，因为钉住消息的管理由引擎内部处理，不再主动注入对话上下文。
 
 ## 与插件的对比
 
