@@ -17,7 +17,6 @@ engine._helpers            # Helpers: 技能集成、工具方法
 engine._persistence        # EnginePersistence: 状态持久化
 engine._sticker            # EngineSticker: 表情包系统
 engine._sticker_oppositions # dict[str, list[str]]: 表情包二元对立缓存（如 {"开心": ["难过", "伤心"]}）
-engine._pinned_manager     # PinnedMessageManager: 消息钉住系统
 engine._evolution_chain    # EvolutionChain: 演化链（含别称管理）
 engine._identity_resolver  # IdentityResolver: 身份解析（含别名/模糊匹配）
 engine._biography_view     # BiographyView: 传记视图，实时计算用户传记
@@ -93,6 +92,8 @@ flowchart TB
 
 认知分析器集成了传记系统的用户别名数据，当群聊中存在用户别称映射时（如 `"小明" → 张三`），会将这些信息注入 LLM prompt，帮助模型区分 AI 自身的别名和其他用户的别称，从而更准确地计算 `directed_score`（消息指向 AI 的程度）。
 
+在管线感知阶段，管道会调用 `_collect_biography_section` 收集当前消息的人物传记上下文，返回一个 `BiographyPromptContext` 对象（包含 `speaker_card`、`mentioned_cards`、`confidence` 字段）。该对象被传递给延迟响应队列，在队列项合并时自动合并多个消息的传记上下文，确保后续 prompt 组装使用最新的传记信息，避免了跨消息的共享状态。
+
 ### 阈值引擎（ThresholdEngine）
 
 动态计算回复阈值，考虑因素：
@@ -148,48 +149,7 @@ flowchart TB
 
 非立即回复进入延迟队列，在确认窗口后释放。支持队列合并（连续发送多条消息时合并为一条回复）。
 
-## 消息钉住系统（PinnedMessageManager）
-
-消息钉住系统允许 AI 根据对话语境主动“钉住”重要消息，在后续多条回复的 prompt 中自动注入，确保关键信息不被遗忘。
-
-### 核心配置
-
-从 `experience.json` 中读取 `pinned_message_max_carry_count` 参数，同时项目常量中定义以下默认值：
-
-| 常量名 | 默认值 | 说明 |
-|--------|--------|------|
-| `MAX_PINNED_MESSAGES` | 10 | 最大可钉住消息数量 |
-| `PINNED_MESSAGE_MAX_AGE_HOURS` | 24 | 钉住消息最大保留时间（小时） |
-| `PINNED_MESSAGE_MAX_CARRY_COUNT` | 100 | 钉住消息最大携带次数（超过后自动取消） |
-
-### 钉住指令
-
-AI 在回复内容中可以通过特定语法控制钉住行为：
-
-- **钉住**：`@pin[理由]` 或 `@pin:理由` — 钉住当前回复中的关键内容（理由可选）。
-- **取消钉住**：`@unpin[all]` 取消所有钉住；`@unpin[理由]` 根据原因取消；`@unpin[内容关键词]` 根据内容关键词取消。
-
-引擎在 Post-Hook 链的优先级 15 处解析这些指令并执行对应操作。
-
-### 当前消息标记
-
-在 prompt 中，用户当前发送的消息使用 `<message>` 标签渲染。`index` 属性优先使用消息的平台消息 ID（`platform_message_id`），若不存在则回退为 `"1"`；同时还可包含 `msg_id` 属性（与 `index` 值相同），用于支持引用回复。`speaker`、`user_id`、`time` 属性分别表示发言者名称、平台用户 ID 和时间。
-
-### 与 Brain 的集成
-
-在每次生成回复（包括主动行为）时，引擎会通过 `get_pinned_messages_for_prompt()` 获取当前群组的钉住消息列表，并注入到 prompt factory 的 `pinned_messages` 参数中。每个钉住消息在 prompt 中渲染为 `<pinned_message>` 标签，包含 `speaker`、`user_id`、`time`、`reason` 属性，以及可选的 `index`（对话索引）和 `msg_id`（平台消息 ID）属性，用于支持引用回复和 prompt 复用。每次调用会增加钉住消息的携带计数，超过阈值时自动取消钉住。
-
-### 引擎 API
-
-引擎通过 `self._pinned_manager` 暴露以下接口：
-
-- `pin_message(content, speaker, group_id, reason, ...)` — 钉住一条消息，`metadata` 可包含 `user_id`、`conversation_index`（对话索引，用于 prompt 复用）、`platform_message_id`（平台消息 ID，用于引用回复）
-- `unpin_message(message_id)` — 按 ID 取消
-- `unpin_by_reason(reason)` — 按原因取消
-- `unpin_all(group_id)` — 取消群组所有钉住
-- `get_pinned_messages(group_id=None)` — 获取钉住消息（用于业务逻辑）
-- `get_pinned_messages_for_prompt(group_id)` — 获取并增加携带计数（用于 prompt 注入）
-- `get_pinned_statistics()` — 统计信息
+每个队列项携带一个 `biography_context` 字段（`BiographyPromptContext` 类型），用于存储该消息的人物传记快照。当多条消息合并时，队列会自动合并各自的传记上下文：`speaker_card` 取后覆盖、`mentioned_cards` 拼接去重、`confidence` 取最大值。合并后的传记上下文在释放回复时传递给 prompt 工厂，确保模型能感知到当前消息涉及的人物关系。
 
 ## Brain 系统
 
@@ -201,10 +161,7 @@ Brain 是引擎的 LLM 调用层，支持：
 | 优先级 | Hook | 功能 |
 |--------|------|------|
 | 0 | `_hook_depth` | 对话深度追踪 |
-| 15 | `_hook_pin_messages` | 钉住/取消钉住指令解析 |
-| 20 | `_hook_stickers` | 表情包发送 |
 | 10 | `_hook_reply_reference` | 模型输出中 `[REPLY:xxx]` 引用回复指令解析，将引用信息存储到 `ChatResult.reply_references` 供适配器层使用（从 basic_memory 获取最近非 assistant 消息建立索引映射） |
-| 15 | `_hook_pin_messages` | 钉住/取消钉住指令解析。当 index=0 且未指定内容时，从最后一次 user 消息中提取真实内容（使用 `PromptFactory._extract_last_message_text`），同时提取说话者（`_extract_last_message_speaker`）；若 index 引用历史消息，使用 basic_memory 中的用户条目（过滤 assistant）构建映射 |
 | 20 | `_hook_stickers` | 表情包发送（使用 `_pick_sticker_choice` 从模型选择列表中随机选一个并匹配实际文件） |
 | 30 | `_hook_dedup` | 回复去重（仅聊天回复，主动行为不触发） |
 | 40 | `_hook_memory` | 记忆记录（basic + semantic），写入模型输出相关标签 |
@@ -261,9 +218,9 @@ Brain 是引擎的 LLM 调用层，支持：
 生成回复后，引擎通过 `_hook_memory` 将回复写入 basic_memory，同时将 entry 对象（包含 `system_prompt`、`tags`、`conversation_chain` 字段，字段值仅记录模型输出相关标签，如表情包、钉住指令）追加到 basic_store，用于后续的快速检索和同步。
 
 - `system_prompt`: 本次 LLM 调用使用的完整 system prompt
-- `tags`: 模型输出相关标签（表情包名称、钉住/取消钉住操作）
+- `tags`: 模型输出相关标签（表情包名称）
 - `conversation_chain`: 完整的 LLM 消息链，包含 system prompt 和用户消息（user/assistant 交替），用于上下文回溯和 prompt 重建
 
-> 注意：用户消息的 entry 包含多模态输入标签（图片、动画表情数量），而 AI 回复的 entry 包含模型输出相关标签（表情包名称、钉住/取消钉住操作）和完整的 LLM 消息链。两部分共同形成完整的对话 tagging。
+> 注意：用户消息的 entry 包含多模态输入标签（图片、动画表情数量），而 AI 回复的 entry 包含模型输出相关标签（表情包名称）和完整的 LLM 消息链。两部分共同形成完整的对话 tagging。
 
 详见 [记忆系统](./memory-system)。
