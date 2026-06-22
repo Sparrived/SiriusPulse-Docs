@@ -1,6 +1,6 @@
 # Brain API 参考
 
-Brain 是 LLM 交互中枢，负责对话生成、模型路由、人格注入、语气对齐等核心能力。框架提供了 PreHook / PostHook 扩展机制，允许在 LLM 生成前后介入处理。
+Brain 是 LLM 交互中枢，负责对话生成、模型路由、人格注入、时间注入等核心能力。框架提供了 PreHook / PostHook 扩展机制，允许在 LLM 生成前后介入处理。
 
 ## 使用方式
 
@@ -32,8 +32,7 @@ async def chat(self, request: ChatRequest) -> ChatResult
 |:---|:---|:---|
 | pre-hooks | 用户自定义 | 按 priority 升序，受 `post_process` + `task_filter` 控制 |
 | 内置预处理 | 人格注入 | `persona.build_system_prompt()` + 表情包提示 |
-| | 语气对齐 | 调整个性化语气风格 |
-| | 时间注入 | 注入当前时间作为上下文 |
+| | 当前时间入消息链 | 注入当前时间作为上下文 |
 | | 模型路由 | `rhythm_analyzer` + `model_router` 选择模型 |
 | | 风格覆盖 | 设置 temperature / max_tokens |
 | | 构建请求 | 组装 `GenerationRequest` |
@@ -228,7 +227,7 @@ def register_post_hook(
 | 优先级 | 角色 | 说明 |
 |:---|:---|:---|
 | 0 | 用户自定义 | 最先执行 |
-| 50 | 引擎内置 | 人格注入、语气对齐等 |
+| 50 | 引擎内置 | 人格注入、当前时间注入等 |
 
 **post-hooks（引擎内置 5 个）：**
 
