@@ -74,6 +74,38 @@ Content-Type: application/json
 { ... }
 ```
 
+### 获取任务参数
+
+```
+GET /api/personas/{name}/task-params
+```
+
+返回所有任务的参数调优配置（temperature / max_tokens / timeout / fallback_model），包含系统默认值。
+
+### 保存任务参数
+
+```
+POST /api/personas/{name}/task-params
+Content-Type: application/json
+
+{
+  "task_temperatures": {
+    "chat": 0.7
+  },
+  "task_max_tokens": {
+    "summarize": 1024
+  },
+  "task_timeout": {
+    "chat": 60.0
+  },
+  "task_fallback_model": {
+    "chat": "gpt-3.5-turbo"
+  }
+}
+```
+
+只有非 null 且非空的字段会被保存，未指定的任务将使用默认值。保存后自动触发编排热重载。
+
 ### 获取体验配置
 
 ```
@@ -290,6 +322,8 @@ Content-Type: application/json
   "qq": 123456789
 }
 ```
+
+停止时默认保持 QQ 进程运行（仅断开管理器引用），以便下次启动人格时复用已登录的会话，避免重复扫码。
 
 ## Provider 管理
 
