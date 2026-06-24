@@ -42,8 +42,11 @@ async def chat(self, request: ChatRequest) -> ChatResult
 | | SKIP 检测 | 检测 `<skip/>` 标签 |
 | | SKILL_CALL 解析 | 提取 `[SKILL_CALL: ...]` 标记 |
 | | 表情包解析 | 提取表情包标签 |
+| | 工具调用解析 | 解析 tool_calls，分离流程控制工具（continue/stop）与普通技能 |
 | | token 记录 | 记录用量 |
 | post-hooks | 用户自定义 | 按 priority 升序，受 `post_process` + `task_filter` 控制 |
+
+> **注意：** 流程控制工具（continue/stop）是内置的，用于实现多轮回复生成。它们不会触发技能执行器，而是由 Brain 内部处理。
 
 ### 原生调用：raw_call()
 
@@ -70,13 +73,14 @@ PreHook = Callable[["Brain", ChatRequest, dict[str, Any]], None]
 | 参数 | 说明 |
 |:---|:---|
 | `brain` | Brain 实例 |
-| `request` | ChatRequest，可修改 system_prompt、messages 等 |
+| `request` | ChatRequest，可修改 system_prompt、messages、extra_tools 等 |
 | `ctx` | 跨 hook 共享的字典，内置步骤也通过它传递中间状态 |
 
 **使用场景：**
 - 向 system_prompt 注入额外指令
 - 修改 temperature / max_tokens
 - 在请求中添加自定义消息
+- 注入额外工具定义（extra_tools）
 - 记录请求日志或做审计
 
 **示例：**
@@ -103,7 +107,7 @@ PostHook = Callable[["Brain", ChatRequest, ChatResult, dict[str, Any]], None]
 |:---|:---|
 | `brain` | Brain 实例 |
 | `request` | 原始的 ChatRequest |
-| `result` | ChatResult，可修改 clean_text、sticker_names 等 |
+| `result` | ChatResult，可修改 clean_text、sticker_names、tool_calls 等 |
 | `ctx` | 携带前处理阶段产生的中间状态 |
 
 **使用场景：**
@@ -111,6 +115,7 @@ PostHook = Callable[["Brain", ChatRequest, ChatResult, dict[str, Any]], None]
 - 记录生成耗时和质量指标
 - 触发自定义动作（如发送表情包）
 - 做回复去重或内容审核
+- 处理或转换 tool_calls
 
 **示例：**
 ```python
@@ -158,12 +163,15 @@ class ChatRequest:
     post_process: bool = False       # True=启用 hook 调度（总闸）
     retry_max: int = 1               # 最大重试次数
     retry_delay: float = 1.0         # 重试间隔（秒）
+
+    extra_tools: list[dict] | None = None  # 额外工具定义列表，例如内置流程控制工具 continue/stop
 ```
 
 **关键字段说明：**
 - `post_process`：hook 总闸。设为 `True` 才会触发 pre-hooks 和 post-hooks。`generate_text()` 等便捷方法默认关闭此开关。
 - `task_name`：影响模型路由选择，也用于 `task_filter` 匹配。
 - `enable_skills`：设为 `False` 可临时禁用 SKILL_CALL 能力。
+- `extra_tools`：注入额外工具函数定义（OpenAI tool format），用于扩展 LLM 的工具调用能力。框架内置的 `continue` 和 `stop` 工具会自动注入，无需手动设置。
 
 ---
 
@@ -183,9 +191,12 @@ class ChatResult:
     sticker_names: list[str]         # 识别的表情包名
     has_skill_call: bool             # 是否包含 SKILL_CALL
     skill_calls: list[tuple[str, dict]]  # 提取的 SKILL_CALL 列表
+    tool_calls: list[ToolCall]       # LLM 返回的工具调用列表（包括流程控制和普通技能）
 ```
 
-**hook 中可修改的字段：** `clean_text` 和 `sticker_names` 可以在 post-hook 中修改，影响最终输出。
+**hook 中可修改的字段：** `clean_text`、`sticker_names` 和 `tool_calls` 可以在 post-hook 中修改，影响最终输出。
+
+> **ToolCall 类型：** 每个工具调用包含 `id`、`function_name`、`function_arguments`（JSON 字符串）等字段。详情参考 SDK 中的 `ToolCall` 类。
 
 ---
 
@@ -278,6 +289,7 @@ def debug_log(brain, request, result, ctx):
     print(f"[Brain]   prompt_len={sum(len(m.get('content','')) for m in request.messages)}")
     print(f"[Brain]   reply_len={len(result.clean_text)} duration={result.duration_ms:.0f}ms")
     print(f"[Brain]   skill_calls={result.skill_calls}")
+    print(f"[Brain]   tool_calls={result.tool_calls}")
 
 brain.register_post_hook(debug_log, priority=100)
 ```
@@ -309,6 +321,8 @@ brain.register_pre_hook(auto_translate, priority=0)
 | **task_filter 路由** | 设为 `{"response_generate"}` 可让 hook 仅在 AI 回复生成时触发，不影响分析任务 |
 | **ctx 字典生命周期** | 每次 `chat()` 调用创建一个新的空字典，pre-hook 写入的 ctx 在 post-hook 中可见，调用结束后释放 |
 | **多个 hook 注册** | 可按需注册任意多个 hook，按 priority 排序依次执行。同 priority 的按注册顺序执行 |
+| **extra_tools 使用** | 可通过 pre-hook 向 `request.extra_tools` 添加自定义工具定义。框架会自动合并内置工具（continue/stop） |
+| **tool_calls 后处理** | post-hook 可以检查或修改 `result.tool_calls`，但需要注意不要破坏流程控制工具的处理逻辑 |
 
 ---
 
