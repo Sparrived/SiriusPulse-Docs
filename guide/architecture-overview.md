@@ -292,6 +292,8 @@ sequenceDiagram
 >
 > **v1.3 Hook 统一处理**：延迟回复的最终回复处理（表情包解析、去重、记忆记录、时间戳更新）已全部移入 `Brain` 的 post‑hooks，不再由 `DelayedQueueTasks` 内部手动管理。因此 `delayed_response_queue` 中的 `sticker_names`、`clean_text` 等字段直接依赖 `ChatResult` 中 hook 处理后的结果。
 >
+> **v1.5 流程控制工具**：延迟回复生成中，AI 可以通过 `continue` 和 `stop` 工具控制回复的流程。`continue` 表示当前文本已发送，继续生成下一条消息；`stop` 表示结束本轮回复。这些工具被注册为 `extra_tools` 传递给 `Brain.chat()`，使 AI 能够在单轮延迟回复中发送多条消息或按需停止。流程控制工具的调用不影响正常的技能执行。
+>
 > **统一消息标签**：v1.4 起，所有 `<message>` XML 标签统一通过 `PromptFactory.tag_message()` 生成，保证格式一致。新增 `platform_message_id` 参数，用于缓存一致性和引用回复，该参数在延迟队列、即时回复、上下文组装中均会传递。
 
 ### 4.4 四种响应策略的触发条件
