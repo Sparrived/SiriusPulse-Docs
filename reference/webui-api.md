@@ -381,3 +381,28 @@ ws://localhost:8080/ws/events?persona={name}
 - `token_usage`: Token 用量更新
 - `skill_executed`: 技能执行完成
 - `plugin_executed`: 插件执行完成
+
+## 任务参数管理
+
+### 获取任务参数
+
+```
+GET /api/personas/{name}/task-params
+```
+
+响应：
+```json
+{
+  "defaults": { ... },
+  "task_params": { ... }
+}
+```
+
+### 更新任务参数
+
+```
+PUT /api/personas/{name}/task-params
+Content-Type: application/json
+
+{ ... }
+```
