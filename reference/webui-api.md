@@ -33,7 +33,7 @@ GET /api/personas
 ### 创建人格
 
 ```
-POST /api/personas/create
+POST /api/personas
 Content-Type: application/json
 
 {
@@ -44,13 +44,31 @@ Content-Type: application/json
 ### 启动人格
 
 ```
-POST /api/personas/{name}/start
+POST /api/persona/start
 ```
 
 ### 停止人格
 
 ```
-POST /api/personas/{name}/stop
+POST /api/persona/stop
+```
+
+### 获取人格状态
+
+```
+GET /api/persona/status
+```
+
+响应示例：
+```json
+{
+  "name": "小星",
+  "active": true,
+  "running": true,
+  "pid": 12345,
+  "heartbeat_at": "2025-01-01T12:00:00Z",
+  "started_at": "2025-01-01T10:00:00Z"
+}
 ```
 
 ### 删除人格
@@ -367,6 +385,24 @@ Content-Type: application/json
 
 { ... }
 ```
+
+## 关闭程序
+
+关闭整个程序（WebUI + 引擎 + 所有服务）。
+
+```
+POST /api/shutdown
+```
+
+响应：
+```json
+{
+  "success": true,
+  "message": "正在关闭..."
+}
+```
+
+> 调用后服务会延迟约 0.5 秒退出，前端应当显示已关闭提示。
 
 ## WebSocket 事件
 
