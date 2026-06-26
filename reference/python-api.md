@@ -222,7 +222,6 @@ from sirius_pulse.models import (
     Transcript,
     UnifiedUser,
     EmotionState,
-    IntentAnalysisV3,      # 新增 sticker_caption 字段
     ResponseStrategy,
 )
 

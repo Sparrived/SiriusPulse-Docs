@@ -10,67 +10,44 @@
 
 ### 1.1 你在看什么
 
-Sirius Pulse 是一个**支持多人格启用的异步角色扮演程序**。想象一个 QQ 群里同时有几个不同的 AI 角色在聊天——有的活泼、有的高冷、有的毒舌——每个人格独立运行、独立记忆、独立配置。
+Sirius Pulse 是一个**单人格异步角色扮演程序**。它以单个 QQ 账号运行一个 AI 角色，拥有独立的记忆、配置和情感状态。v1.5 起架构从多人格子进程简化为单进程引擎，所有模块运行在同一进程内。
 
 ### 1.2 进程模型
 
 ```mermaid
 flowchart TD
-    subgraph MainProcess["主进程"]
-        CLI["python -m sirius_pulse run"]
-        PM["PersonaManager<br/>扫描/启停/端口分配"]
+    subgraph MainProcess["主进程（单进程）"]
+        CLI["python main.py run"]
+        Engine["EngineRuntime<br/>核心引擎"]
         WebUI["WebUIServer<br/>aiohttp REST + WebSocket + 认证"]
-        NM["NapCatManager<br/>全局安装/多实例调度"]
+        Adapter["NapCatAdapter<br/>OneBot v11 连接"]
+        Brain["Brain（LLM 中枢）"]
+        Providers["data/providers/provider_keys.json"]
     end
 
-    CLI --> PM
+    CLI --> Engine
     CLI --> WebUI
-    CLI --> NM
+    Engine --> Adapter
+    Engine --> Brain
+    Brain --> Providers
 
-    subgraph PersonaA["子进程 A（人格：月白）"]
-        PWA["PersonaWorker<br/>--config data/personas/月白"]
-        RTA["EngineRuntime"]
-        EngineA["EmotionalGroupChatEngine"]
-        BrainA["Brain（LLM 中枢）"]
-        AdapterA["NapCatAdapter"]
-        PWA --> RTA --> EngineA
-        PWA --> AdapterA
-        RTA --> AdapterA
-        EngineA --> BrainA
+    subgraph DataLayer["数据层"]
+        Config["data/adapters.json, data/experience.json,<br/>data/persona.json, data/orchestration.json"]
+        Memory["data/basic_store.db, data/memory.db,<br/>data/diaries/..."]
     end
 
-    subgraph PersonaB["子进程 B（人格：Sirius）"]
-        PWB["PersonaWorker<br/>--config data/personas/Sirius"]
-        RTB["EngineRuntime"]
-        EngineB["EmotionalGroupChatEngine"]
-        BrainB["Brain（LLM 中枢）"]
-        AdapterB["NapCatAdapter"]
-        PWB --> RTB --> EngineB
-        PWB --> AdapterB
-        RTB --> AdapterB
-        EngineB --> BrainB
-    end
-
-    PM -->|"subprocess.Popen<br/>CREATE_NEW_CONSOLE"| PWA
-    PM -->|"subprocess.Popen<br/>CREATE_NEW_CONSOLE"| PWB
-    NM -->|"共享全局二进制<br/>独立配置/日志"| AdapterA
-    NM -->|"共享全局二进制<br/>独立配置/日志"| AdapterB
-
-    PM -->|"维护"| Registry["data/adapter_port_registry.json<br/>端口分配表"]
-    BrainA -->|"共用"| Providers["data/providers/provider_keys.json<br/>全局 Provider 注册表"]
-    BrainB -->|"共用"| Providers
+    Engine --> Config
+    Engine --> Memory
 ```
 
 ### 1.3 关键设计决策
 
 | 决策 | 说明 |
 |------|------|
-| **独立子进程** | 每个人格一个独立进程，崩溃不影响其他人格 |
-| **数据隔离** | 每个人格有自己的目录 `data/personas/{name}/`，记忆、配置、日志完全隔离 |
-| **Brain 统一调用** | 所有人格共用 `provider_keys.json`，但各自有独立的 Brain 实例，LLM 调用总是通过 Brain 完成，不再散落各处 |
-| **chat 串行，raw 并行** | `chat()` 通道串行化保证消息顺序；`raw_call()` 通道不受限，可与 chat 并行 |
-| **NapCat 多实例** | 每个人格独立的 QQ 实例，共享全局二进制，独立配置和日志 |
-| **端口自动分配** | `PersonaManager` 从 3001 开始递增分配 WebSocket 端口 |
+| **单进程引擎** | 所有模块在主进程内运行，简化启动和调试，无需进程间通信 |
+| **数据扁平化** | 配置文件直接位于 `data/` 根目录（不再有 `personas/` 子目录），迁移脚本 `scripts/migrate_to_standalone.py` 可将旧结构自动转换为新结构 |
+| **Brain 统一调用** | LLM 调用统一通过 Brain 完成，`chat()` 串行保证顺序，`raw_call()` 可并行 |
+| **单 NapCat 实例** | 只管理一个 NapCat 实例，配置位于 `data/adapters.json` |
 | **内存+持久化双写** | 每次记忆写入 `basic_memory`（内存窗口）后自动同步到 `basic_store`（持久化存储），确保重启后上下文不丢失 |
 
 ---
@@ -80,72 +57,69 @@ flowchart TD
 ### 2.1 从命令行到运行
 
 ```bash
-python -m sirius_pulse run
+python main.py run
 ```
 
 ```mermaid
 flowchart TD
-    A["python -m sirius_pulse run"] --> B["加载 data/global_config.json"]
-    B --> C["创建 PersonaManager<br/>扫描 data/personas/ 目录"]
-    C --> D["NapCatManager 全局安装检查<br/>自动安装缺失的 NapCat 二进制"]
-    D --> E["为每个 enabled 人格<br/>分配 NapCat 端口与实例目录"]
-    E --> F["为每个人格启动 NapCat 实例<br/>CREATE_NEW_CONSOLE"]
-    F --> G["为每个人格启动 PersonaWorker 子进程<br/>python -m sirius_pulse.persona_worker --config {pdir}"]
-    G --> H["启动 WebUIServer<br/>aiohttp REST API"]
-    H --> I["主进程阻塞等待<br/>SIGTERM/SIGINT 优雅退出"]
-    I --> J["停止所有子进程<br/>停止 NapCat 实例<br/>停止 WebUI"]
+    A["python main.py run"] --> B["加载 data/global_config.json"]
+    B --> C["检查并执行数据迁移（旧格式 → 扁平格式）"]
+    C --> D["加载人格配置<br/>data/adapters.json, data/persona.json 等"]
+    D --> E["创建 EngineRuntime<br/>初始化核心引擎"]
+    E --> F["启动 NapCatAdapter<br/>连接 QQ"]
+    F --> G["启动 WebUIServer<br/>aiohttp REST API"]
+    G --> H["主进程阻塞等待<br/>SIGTERM/SIGINT 优雅退出"]
+    H --> I["停止引擎<br/>停止 NapCat 连接<br/>停止 WebUI"]
 ```
 
-### 2.2 主进程三大组件
+### 2.2 主进程核心组件
 
-**PersonaManager（人格管家）**
-- `create_persona(name)` — 创建新人格目录和默认配置
-- `start_persona(name)` — 启动单个人格（含 NapCat 自动管理）
-- `run_all()` — 批量启动所有 enabled 人格
-- `get_logs(name)` — 读取子进程日志
-- `get_status(name)` — 读取子进程心跳状态
+**EngineRuntime（引擎运行时）**
+- 加载所有人格配置文件（persona.json, adapters.json, experience.json, orchestration.json）
+- 创建并管理 EmotionalGroupChatEngine、Brain 等核心模块
+- 提供生命周期管理（启动、停止、热重载）
+- 数据存储统一管理（basic_store、memory.db、diaries）
 
 **WebUIServer（管理面板）**
-- 提供 REST API：人格列表、状态、配置、日志、监控
+- 提供 REST API：引擎状态、配置、日志、监控
 - 提供 WebSocket 事件推送：实时接收引擎事件
 - 提供 JWT 认证：admin/viewer 角色权限控制
 - 提供静态页面：Dashboard + 配置面板 + 监控页面
-- 不直接操作 NapCat 进程，只通过 API 与 PersonaManager 交互
-- 保存 Provider 配置后自动通知所有运行中的人格外进程热重载 provider 配置；WebUI 的存储相关 API 以只读模式打开数据库，避免与引擎写操作产生锁冲突
-- 提供用户别名管理 API（添加、删除、shadow 标记），别名数据直接持久化在 `memory.db` 的 `aliases` 表，管理操作不再依赖演化链中间缓存。
+- WebUI 的存储相关 API 以只读模式打开数据库，避免与引擎写操作产生锁冲突
+- 提供用户别名管理 API（添加、删除、shadow 标记），别名数据直接持久化在 `memory.db` 的 `aliases` 表
 
-**NapCatManager（QQ 管理器）**
-- 管理 NapCat 全局二进制（安装、更新）
-- 为每个人格创建独立实例目录
-- 启动/停止 NapCat 进程
+**NapCatAdapter（QQ 连接器）**
+- 作为引擎内模块直接运行，管理单一的 NapCat 实例
+- 配置位于 `data/adapters.json`
+- 启动时自动连接，崩溃时自动重连
 
 ---
 
-## 第三章：人格子进程启动流程
+## 第三章：引擎核心初始化和核心协作
 
-### 3.1 子进程内部发生了什么
+### 3.1 引擎初始化流程
 
 ```mermaid
 flowchart TD
-    A["PersonaWorker.run()"] --> B["加载配置<br/>adapters.json / experience.json /<br/>orchestration.json / persona.json"]
-    B --> C["创建 EngineRuntime<br/>work_path=人格目录<br/>global_data_path=data/"]
-    C --> D["启动 EngineRuntime<br/>懒加载 EmotionalGroupChatEngine<br/>创建 Brain（LLM 中枢）"]
-    D --> E["为每个 enabled adapter<br/>创建 NapCatAdapter"]
-    E --> F["adapter.start()<br/>启动 WebSocket 连接"]
-    F --> G["启动心跳循环<br/>每 10 秒写入 worker_status.json"]
-    G --> H["阻塞等待关闭信号"]
-    H --> I["清理：停止 adapter、停止 runtime"]
+    A["EngineRuntime.start()"] --> B["加载配置<br/>data/adapters.json / data/experience.json /<br/>data/orchestration.json / data/persona.json"]
+    B --> C["创建 EmotionalGroupChatEngine<br/>并初始化 Brain（LLM 中枢）"]
+    C --> D["创建并启动 NapCatAdapter<br/>（单个 WebSocket 连接）"]
+    D --> E["启动后台任务循环<br/>（延迟队列检查、主动触发、日记生成等）"]
+    E --> F["启动心跳循环<br/>每 10 秒更新状态文件"]
+    F --> G["阻塞等待关闭信号"]
+    G --> H["清理：停止 adapter、停止引擎"]
 ```
 
-### 3.2 子进程内的关键协作
+### 3.2 核心协作关系
 
-- 所有 bridge 共享同一个 `EngineRuntime` 和同一个 Brain 实例
-- 每个 bridge 有自己的 `allowed_group_ids` 配置
-- engine 的 `_pending_reminders` 是共享的（所有 bridge 都能投递提醒）
+- 所有模块共享同一个 `EngineRuntime` 和同一个 Brain 实例
+- NapCatAdapter 拥有唯一的 `allowed_group_ids` 配置
+- engine 的 `_pending_reminders` 全局共享
 - Brain 是单例的，`chat()` 串行执行，`raw_call()` 可与 chat 并行
 - **Brain system prompt 变更**：v1.3 起，Brain 的默认 pre‑hook 不再自动拼接 `memory_spec` 部分。构建系统提示时，将由 `PromptFactory.assemble_chat()` 等上层调用负责组装客户化记忆相关指令。如需自定义记忆策略，请通过 `build_system_prompt()` 或在配置中调整。
 - **IdentityResolver 增强解析**：`IdentityResolver` 新增 `resolve_with_alias()` 方法，支持四层解析链（精确平台ID→Bot自识别→别名精确→模糊匹配），返回值含置信度和来源，用于开发者判断和用户解析。
 - 引擎支持配置文件热重载，通过写入 `engine_state/reload_requested` 标志文件触发，支持类型：`persona`、`orchestration`、`experience`、`provider`、`all`。其中 `provider` 类型会重新构建 Provider 实例，使 provider 配置变更无需重启引擎。
+- 数据目录结构扁平化：所有配置文件位于 `data/` 根目录，`data/personas/` 已废弃，迁移脚本 `scripts/migrate_to_standalone.py` 可用于旧结构转换。
 
 ---
 

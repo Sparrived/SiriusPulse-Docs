@@ -10,65 +10,34 @@ Sirius Pulse 内置的 WebUI 提供了 REST API 用于管理和监控。
 
 ## 人格管理
 
-### 获取所有人格
+> 系统运行在单人格模式下，所有配置和状态均针对当前活跃人格。
+
+### 获取人格状态
 
 ```
-GET /api/personas
+GET /api/persona/status
 ```
 
 响应：
 ```json
 {
-  "personas": [
-    {
-      "name": "小星",
-      "status": "running",
-      "port": 3001,
-      "pid": 12345
-    }
-  ]
+  "name": "小星",
+  "status": "running",
+  "port": 3001,
+  "pid": 12345
 }
-```
-
-### 创建人格
-
-```
-POST /api/personas/create
-Content-Type: application/json
-
-{
-  "name": "新人格"
-}
-```
-
-### 启动人格
-
-```
-POST /api/personas/{name}/start
-```
-
-### 停止人格
-
-```
-POST /api/personas/{name}/stop
-```
-
-### 删除人格
-
-```
-DELETE /api/personas/{name}
 ```
 
 ### 获取人格配置
 
 ```
-GET /api/personas/{name}/config
+GET /api/persona/config
 ```
 
 ### 更新人格配置
 
 ```
-PUT /api/personas/{name}/config
+PUT /api/persona/config
 Content-Type: application/json
 
 { ... }
@@ -77,7 +46,7 @@ Content-Type: application/json
 ### 获取体验配置
 
 ```
-GET /api/personas/{name}/experience
+GET /api/persona/experience
 ```
 
 响应：
@@ -87,10 +56,12 @@ GET /api/personas/{name}/experience
 
 ## 记忆管理
 
+所有记忆接口自动关联当前活跃人格，无需在路径中指定人格名称。
+
 ### 获取群聊记忆
 
 ```
-GET /api/memory/{persona_name}/groups/{group_id}
+GET /api/memory/groups/{group_id}
 ```
 
 响应包含：
@@ -101,7 +72,7 @@ GET /api/memory/{persona_name}/groups/{group_id}
 ### 获取用户记忆
 
 ```
-GET /api/memory/{persona_name}/users/{user_id}
+GET /api/memory/users/{user_id}
 ```
 
 响应包含：
@@ -110,7 +81,7 @@ GET /api/memory/{persona_name}/users/{user_id}
 ### 获取人物传记
 
 ```
-GET /api/biography/{persona_name}
+GET /api/biography
 ```
 
 响应格式包含以下字段：
@@ -127,7 +98,7 @@ GET /api/biography/{persona_name}
 ### 获取对话历史
 
 ```
-GET /api/personas/{name}/conversations
+GET /api/persona/conversations
 ```
 
 查询参数：
@@ -177,16 +148,18 @@ GET /api/personas/{name}/conversations
 
 ## Plugin 管理
 
+> Plugin 配置均针对当前活跃人格。
+
 ### 获取插件列表
 
 ```
-GET /api/plugins/{persona_name}
+GET /api/plugins
 ```
 
 ### 获取插件详情
 
 ```
-GET /api/plugins/{persona_name}/{plugin_name}
+GET /api/plugins/{plugin_name}
 ```
 
 响应：
@@ -214,7 +187,7 @@ GET /api/plugins/{persona_name}/{plugin_name}
 ### 更新插件配置
 
 ```
-PUT /api/plugins/{persona_name}/{plugin_name}/config
+PUT /api/plugins/{plugin_name}/config
 Content-Type: application/json
 
 {
@@ -227,22 +200,24 @@ Content-Type: application/json
 
 ## Skill 管理
 
+> Skill 配置均针对当前活跃人格。
+
 ### 获取技能列表
 
 ```
-GET /api/skills/{persona_name}
+GET /api/skills
 ```
 
 ### 获取技能数据
 
 ```
-GET /api/skills/{persona_name}/{skill_name}/data
+GET /api/skills/{skill_name}/data
 ```
 
 ### 更新技能数据
 
 ```
-PUT /api/skills/{persona_name}/{skill_name}/data
+PUT /api/skills/{skill_name}/data
 Content-Type: application/json
 
 { ... }
@@ -339,16 +314,18 @@ Content-Type: application/json
 
 ## Token 统计
 
+> Token 统计针对当前活跃人格。
+
 ### 获取 Token 用量
 
 ```
-GET /api/token/{persona_name}/usage?since=2026-01-01
+GET /api/token/usage?since=2026-01-01
 ```
 
 ### 获取分析报告
 
 ```
-GET /api/token/{persona_name}/report
+GET /api/token/report
 ```
 
 ## 全局配置
@@ -371,8 +348,10 @@ Content-Type: application/json
 ## WebSocket 事件
 
 ```
-ws://localhost:8080/ws/events?persona={name}
+ws://localhost:8080/ws/events
 ```
+
+连接后自动绑定当前活跃人格的事件。
 
 实时推送引擎事件：
 - `message_received`: 新消息到达
