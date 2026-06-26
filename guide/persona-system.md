@@ -1,28 +1,24 @@
 # 人格系统
 
-人格（Persona）是 Sirius Pulse 角色的完整定义。每个人格拥有独立的身份、记忆、模型编排和平台连接，可以**同时运行多个人格**而互不干扰。
+人格（Persona）是 Sirius Pulse 角色的完整定义。每个人格拥有独立的身份、记忆、模型编排和平台连接，**引擎在主进程内直接运行**，无需子进程。
 
 ## 系统架构
 
 ```mermaid
 flowchart TB
-    A["PersonaManager<br>（主进程）"] --> A1[扫描 data/personas/ 目录]
-    A --> A2["端口分配<br>每人格独立 NapCat WS 端口"]
-    A --> A3[启停调度]
-    A --> A4["PersonaWorker<br>（子进程，独立控制台窗口）"]
-    A4 --> B1["PersonaConfig<br>配置加载"]
-    A4 --> B2["EngineRuntime<br>引擎封装"]
-    B2 --> B2a["EmotionalGroupChatEngine"]
-    A4 --> B3["NapCatAdapter<br>平台适配"]
-    A4 --> B4["心跳 / 状态监控"]
+    A["SiriusPulse Engine<br>（主进程）"] --> B1["PersonaConfig<br>配置加载"]
+    A --> B2["EngineRuntime<br>引擎封装"]
+    B2 --> C["EmotionalGroupChatEngine"]
+    A --> D["NapCatAdapter<br>平台适配"]
+    A --> E["Heartbeat / Status Monitoring"]
 ```
 
 ## 人格数据目录
 
-每个人格的数据完全隔离，存放在 `data/personas/{name}/` 下：
+人格数据直接存放在 `data/` 目录下，无需多层嵌套：
 
 ```
-data/personas/my-bot/
+data/
 ├── persona.json          # 角色定义
 ├── orchestration.json    # 模型编排策略
 ├── adapters.json         # 平台适配器列表
@@ -31,7 +27,8 @@ data/personas/my-bot/
 ├── memory/               # 语义记忆向量存储
 ├── diary/                # 日记存档
 ├── skill_data/           # 技能数据（含表情包 RAG 库等）
-└── logs/                 # 文件日志
+├── logs/                 # 文件日志
+└── providers/            # 模型提供商配置（可选）
 ```
 
 ## 人格定义详解
@@ -81,63 +78,41 @@ data/personas/my-bot/
 | `normal` | 正常模式 |
 | `selective` | 筛选模式，仅高相关度时回复 |
 
-## 多人格管理
+## 单人格管理
 
-### 创建人格
-
-```bash
-sirius-pulse persona create 小星
-```
-
-这会自动生成 `data/personas/小星/` 及默认配置文件。
-
-### 查看人格列表
+### 初始化配置
 
 ```bash
-sirius-pulse persona list
+python main.py init
 ```
 
-### 启动 / 停止
+这会在 `data/` 目录下生成默认配置文件（如果不存在）。
+
+### 启动引擎
 
 ```bash
 # 前台启动（含控制台输出）
-sirius-pulse persona start 小星
-
-# 后台批量启动
-sirius-pulse run
+python main.py run
+# 或直接运行主程序
+python main.py
 ```
 
-### 删除人格
+### 助手模式
 
 ```bash
-sirius-pulse persona remove 小星
+# 以助手模式连接管家端
+python main.py assistant --butler ws://...
 ```
-
-## 多人格间的交互
-
-### 端口分配
-
-多人格共用 NapCat 时，Port 自动按 `base_port + index` 分配：
-
-```
-小星  → ws://127.0.0.1:3001
-小黑  → ws://127.0.0.1:3002
-小白  → ws://127.0.0.1:3003
-```
-
-### 互相识别（peer_ai_ids）
-
-系统会自动扫描其他人格的 QQ 号，填入 `peer_ai_ids` 配置。引擎会识别群聊中其他 AI 的发言，避免互相回复形成循环。
 
 ## 生命周期
 
 ```mermaid
 flowchart LR
-    A[创建] --> B[配置]
+    A[初始化] --> B[配置]
     B --> C[启动]
     C --> D[运行中<br>可热重载配置]
     D --> E[停止]
-    E --> F[删除]
+    E --> F[清理]<br>（删除数据目录后失去配置）
     B -.-> G[WebUI 编辑]
     D -.-> G
 
