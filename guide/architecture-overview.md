@@ -12,64 +12,47 @@
 
 Sirius Pulse 是一个**支持多人格启用的异步角色扮演程序**。想象一个 QQ 群里同时有几个不同的 AI 角色在聊天——有的活泼、有的高冷、有的毒舌——每个人格独立运行、独立记忆、独立配置。
 
-### 1.2 进程模型
+### 1.2 进程模型（单人格局）
+
+> 当前版本设计为单活跃人格运行，引擎在主进程内直接执行，不再创建子进程。多进程支持已在规划中。
 
 ```mermaid
 flowchart TD
     subgraph MainProcess["主进程"]
-        CLI["python -m sirius_pulse run"]
-        PM["PersonaManager<br/>扫描/启停/端口分配"]
+        CLI["python main.py run"]
         WebUI["WebUIServer<br/>aiohttp REST + WebSocket + 认证"]
-        NM["NapCatManager<br/>全局安装/多实例调度"]
+        Worker["PersonaWorker<br/>直接在主进程运行"]
+        NM["NapCatManager<br/>全局安装/单实例调度"]
     end
 
-    CLI --> PM
     CLI --> WebUI
+    CLI --> Worker
     CLI --> NM
 
-    subgraph PersonaA["子进程 A（人格：月白）"]
-        PWA["PersonaWorker<br/>--config data/personas/月白"]
-        RTA["EngineRuntime"]
-        EngineA["EmotionalGroupChatEngine"]
-        BrainA["Brain（LLM 中枢）"]
-        AdapterA["NapCatAdapter"]
-        PWA --> RTA --> EngineA
-        PWA --> AdapterA
-        RTA --> AdapterA
-        EngineA --> BrainA
+    subgraph Engine["引擎核心"]
+        RT["EngineRuntime"]
+        EngineCore["EmotionalGroupChatEngine"]
+        Brain["Brain（LLM 中枢）"]
+        Adapter["NapCatAdapter"]
+        Worker --> RT --> EngineCore
+        Worker --> Adapter
+        RT --> Adapter
+        EngineCore --> Brain
     end
 
-    subgraph PersonaB["子进程 B（人格：Sirius）"]
-        PWB["PersonaWorker<br/>--config data/personas/Sirius"]
-        RTB["EngineRuntime"]
-        EngineB["EmotionalGroupChatEngine"]
-        BrainB["Brain（LLM 中枢）"]
-        AdapterB["NapCatAdapter"]
-        PWB --> RTB --> EngineB
-        PWB --> AdapterB
-        RTB --> AdapterB
-        EngineB --> BrainB
-    end
-
-    PM -->|"subprocess.Popen<br/>CREATE_NEW_CONSOLE"| PWA
-    PM -->|"subprocess.Popen<br/>CREATE_NEW_CONSOLE"| PWB
-    NM -->|"共享全局二进制<br/>独立配置/日志"| AdapterA
-    NM -->|"共享全局二进制<br/>独立配置/日志"| AdapterB
-
-    PM -->|"维护"| Registry["data/adapter_port_registry.json<br/>端口分配表"]
-    BrainA -->|"共用"| Providers["data/providers/provider_keys.json<br/>全局 Provider 注册表"]
-    BrainB -->|"共用"| Providers
+    NM -->|"共享全局二进制<br/>独立配置/日志"| Adapter
+    Brain -->|"使用"| Providers["data/providers/provider_keys.json<br/>全局 Provider 注册表"]
 ```
 
 ### 1.3 关键设计决策
 
 | 决策 | 说明 |
 |------|------|
-| **独立子进程** | 每个人格一个独立进程，崩溃不影响其他人格 |
-| **数据隔离** | 每个人格有自己的目录 `data/personas/{name}/`，记忆、配置、日志完全隔离 |
+| **单进程运行** | 当前版本为单活跃人格，引擎在主进程内直接运行；崩溃会影响整体（可通过进程重启恢复） |
+| **数据隔离** | 每个人格有自己的目录 `data/personas/{name}/`，记忆、配置、日志完全隔离；多个人格目录可共存，但运行时只启用一个 |
 | **Brain 统一调用** | 所有人格共用 `provider_keys.json`，但各自有独立的 Brain 实例，LLM 调用总是通过 Brain 完成，不再散落各处 |
 | **chat 串行，raw 并行** | `chat()` 通道串行化保证消息顺序；`raw_call()` 通道不受限，可与 chat 并行 |
-| **NapCat 多实例** | 每个人格独立的 QQ 实例，共享全局二进制，独立配置和日志 |
+| **NapCat 单实例** | 当前版本为单人格，NapCat 采用单实例，共享全局二进制，独立配置和日志；多实例支持已内置但暂未启用 |
 | **端口自动分配** | `PersonaManager` 从 3001 开始递增分配 WebSocket 端口 |
 | **内存+持久化双写** | 每次记忆写入 `basic_memory`（内存窗口）后自动同步到 `basic_store`（持久化存储），确保重启后上下文不丢失 |
 
@@ -80,30 +63,32 @@ flowchart TD
 ### 2.1 从命令行到运行
 
 ```bash
-python -m sirius_pulse run
+python main.py run
 ```
 
 ```mermaid
 flowchart TD
-    A["python -m sirius_pulse run"] --> B["加载 data/global_config.json"]
-    B --> C["创建 PersonaManager<br/>扫描 data/personas/ 目录"]
-    C --> D["NapCatManager 全局安装检查<br/>自动安装缺失的 NapCat 二进制"]
-    D --> E["为每个 enabled 人格<br/>分配 NapCat 端口与实例目录"]
-    E --> F["为每个人格启动 NapCat 实例<br/>CREATE_NEW_CONSOLE"]
-    F --> G["为每个人格启动 PersonaWorker 子进程<br/>python -m sirius_pulse.persona_worker --config {pdir}"]
-    G --> H["启动 WebUIServer<br/>aiohttp REST API"]
+    A["python main.py run"] --> B["加载 data/global_config.json<br/>获取 active_persona 名称"]
+    B --> C["数据迁移检查<br/>旧格式 → personas/default/"]
+    C --> D["启动 WebUIServer<br/>aiohttp REST API + Embedding 微服务"]
+    D --> E["等待 Embedding 服务就绪<br/>（模型加载）"]
+    E --> F["创建 PersonaWorker<br/>persona_dir = data/personas/{active_persona}"]
+    F --> G["NapCatManager 安装检查<br/>启动 NapCat 实例"]
+    G --> H["PersonaWorker.run()<br/>引擎在主进程直接运行"]
     H --> I["主进程阻塞等待<br/>SIGTERM/SIGINT 优雅退出"]
-    I --> J["停止所有子进程<br/>停止 NapCat 实例<br/>停止 WebUI"]
+    I --> J["停止 PersonaWorker<br/>停止 NapCat 实例<br/>停止 WebUI"]
 ```
 
 ### 2.2 主进程三大组件
 
 **PersonaManager（人格管家）**
+> 当前版本中，PersonaManager 主要用于 WebUI API 层面的管理操作（创建/删除/切换人格），实际的引擎启动由 CLI 在主进程直接完成。
 - `create_persona(name)` — 创建新人格目录和默认配置
-- `start_persona(name)` — 启动单个人格（含 NapCat 自动管理）
-- `run_all()` — 批量启动所有 enabled 人格
-- `get_logs(name)` — 读取子进程日志
-- `get_status(name)` — 读取子进程心跳状态
+- `switch_persona(name)` — 切换活跃人格（更新全局配置）
+- `get_personas()` — 列出所有人格及其状态
+- `delete_persona(name)` — 删除人格目录
+- `get_logs(name)` — 读取人格日志
+- `get_status(name)` — 读取人格运行状态
 
 **WebUIServer（管理面板）**
 - 提供 REST API：人格列表、状态、配置、日志、监控
@@ -111,8 +96,9 @@ flowchart TD
 - 提供 JWT 认证：admin/viewer 角色权限控制
 - 提供静态页面：Dashboard + 配置面板 + 监控页面
 - 不直接操作 NapCat 进程，只通过 API 与 PersonaManager 交互
-- 保存 Provider 配置后自动通知所有运行中的人格外进程热重载 provider 配置；WebUI 的存储相关 API 以只读模式打开数据库，避免与引擎写操作产生锁冲突
+- 保存 Provider 配置后自动通知当前运行的人格外进程热重载 provider 配置；WebUI 的存储相关 API 以只读模式打开数据库，避免与引擎写操作产生锁冲突
 - 提供用户别名管理 API（添加、删除、shadow 标记），别名数据直接持久化在 `memory.db` 的 `aliases` 表，管理操作不再依赖演化链中间缓存。
+- 提供人格管理 API：创建、删除、切换活跃人格（`/api/personas` 相关端点）
 
 **NapCatManager（QQ 管理器）**
 - 管理 NapCat 全局二进制（安装、更新）
@@ -121,23 +107,23 @@ flowchart TD
 
 ---
 
-## 第三章：人格子进程启动流程
+## 第三章：人格引擎启动流程
 
-### 3.1 子进程内部发生了什么
+### 3.1 引擎内部初始化流程（主进程内运行）
 
 ```mermaid
 flowchart TD
-    A["PersonaWorker.run()"] --> B["加载配置<br/>adapters.json / experience.json /<br/>orchestration.json / persona.json"]
+    A["PersonaWorker.run()<br/>（主进程事件循环内异步执行）"] --> B["加载配置<br/>adapters.json / experience.json /<br/>orchestration.json / persona.json"]
     B --> C["创建 EngineRuntime<br/>work_path=人格目录<br/>global_data_path=data/"]
     C --> D["启动 EngineRuntime<br/>懒加载 EmotionalGroupChatEngine<br/>创建 Brain（LLM 中枢）"]
     D --> E["为每个 enabled adapter<br/>创建 NapCatAdapter"]
     E --> F["adapter.start()<br/>启动 WebSocket 连接"]
     F --> G["启动心跳循环<br/>每 10 秒写入 worker_status.json"]
-    G --> H["阻塞等待关闭信号"]
-    H --> I["清理：停止 adapter、停止 runtime"]
+    G --> H["主进程事件循环继续处理其他协程"]
+    H --> I["收到关闭信号后，清理：停止 adapter、停止 runtime"]
 ```
 
-### 3.2 子进程内的关键协作
+### 3.2 引擎内的关键协作
 
 - 所有 bridge 共享同一个 `EngineRuntime` 和同一个 Brain 实例
 - 每个 bridge 有自己的 `allowed_group_ids` 配置
