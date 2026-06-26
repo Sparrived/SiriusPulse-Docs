@@ -65,14 +65,54 @@ DELETE /api/personas/{name}
 GET /api/personas/{name}/config
 ```
 
+响应示例：
+
+```json
+{
+  "orchestration": {
+    "task_enabled": {
+      "cognition_analyze": true,
+      "memory_consolidation": true
+    },
+    "cognition_max_tokens": 1024,
+    "memory_refer_max_length": 3000,
+    "diary_top_k": 5,
+    "system_prompt": "",
+    "enable_skills": true,
+    "enable_memory": true,
+    "max_skill_rounds": 3,
+    "skill_execution_timeout": 30.0,
+    "auto_install_skill_deps": true,
+    "plan_mode_enabled": false,
+    "plan_mode_limit_normal_tools": false,
+    "plan_mode_allow_light_chat": true,
+    "plan_mode_presence_enabled": false,
+    "plan_mode_presence_min_interval_seconds": 45.0,
+    "plan_mode_presence_enter_message": "我看到了，这个得稍微捋一下。",
+    "plan_mode_presence_update_message": "补充我看到了，我会按新的前提来。"
+  },
+  "...": "其他配置项"
+}
+```
+
 ### 更新人格配置
 
 ```
 PUT /api/personas/{name}/config
 Content-Type: application/json
 
-{ ... }
+{
+  "orchestration": {
+    "plan_mode_enabled": true,
+    "plan_mode_limit_normal_tools": true,
+    "plan_mode_presence_enabled": true,
+    "plan_mode_presence_enter_message": "我看到你的请求了，让我规划一下。",
+    "plan_mode_presence_update_message": "我看到了新的信息，会更新规划。"
+  }
+}
 ```
+
+支持部分更新，只提供需要修改的字段。
 
 ### 获取体验配置
 

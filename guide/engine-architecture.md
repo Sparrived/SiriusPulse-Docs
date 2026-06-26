@@ -148,6 +148,40 @@ flowchart TB
 
 非立即回复进入延迟队列，在确认窗口后释放。支持队列合并（连续发送多条消息时合并为一条回复）。
 
+## 隐藏计划模式（Plan Mode）
+
+隐藏计划模式允许 AI 在需要多步工具调用或复杂后台工作时，临时进入一个“私密”对话流程，中间步骤不发送到群聊，仅在最终给出可见回复。
+
+### 配置项
+
+通过编排配置（orchestration）启用：
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `plan_mode_enabled` | bool | false | 启用隐藏计划模式 |
+| `plan_mode_limit_normal_tools` | bool | false | 当启用计划模式时，限制普通聊天仅使用轻量运行时工具 |
+| `plan_mode_allow_light_chat` | bool | true | 计划进行中时，允许同群聊无关的轻量对话 |
+| `plan_mode_presence_enabled` | bool | false | 当计划开始或更新时，发送简短的人员状态消息 |
+| `plan_mode_presence_min_interval_seconds` | float | 45.0 | 计划状态消息的最小间隔（秒） |
+| `plan_mode_presence_enter_message` | str | "我看到了，这个得稍微捋一下。" | 进入计划模式时发送的可见文本 |
+| `plan_mode_presence_update_message` | str | "补充我看到了，我会按新的前提来。" | 接受计划事件时发送的可见文本 |
+
+### 流程控制工具
+
+在计划模式下，AI 可以使用以下工具：
+
+- **`enter_plan`**：进入隐藏计划模式，需指定 `goal`（具体目标）和可选的 `reason`。此后所有中间消息不会发送到群聊。
+- **`exit_plan`**：退出计划模式，发送最终消息 `final_message` 到群聊，可附带 `summary`（日志摘要）。
+- **`abort_plan`**：中止计划，可指定 `reason` 和可选的 `message` 发到群聊。
+
+这些工具仅在 `plan_mode_enabled=true` 时可用。当 `plan_mode_limit_normal_tools=true` 且当前在普通聊天通道时，普通技能工具被隐藏，系统提示中会引导 AI 调用 `enter_plan`。
+
+### 与延迟队列的集成
+
+延迟队列条目新增 `lane` 字段（值为 `"chat"` 或 `"plan"`）和 `plan_id` 字段，用于区分普通聊天回复和计划模式回复。计划模式的回复会使用独立的工具集，并支持消费计划事件（`consume_plan_events`）以更新计划上下文。
+
+> 隐藏计划模式不会影响其他群聊的正常对话流程。
+
 ## 消息钉住系统（PinnedMessageManager）
 
 消息钉住系统允许 AI 根据对话语境主动“钉住”重要消息，在后续多条回复的 prompt 中自动注入，确保关键信息不被遗忘。
