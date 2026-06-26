@@ -53,6 +53,8 @@ POST /api/personas/{name}/start
 POST /api/personas/{name}/stop
 ```
 
+停止人格时，如果当前运行中的 Worker 对应的正是该人格目录，系统会同时请求停止 Worker 进程。此操作会清除全局配置中的 `active_persona` 字段。
+
 ### 删除人格
 
 ```
