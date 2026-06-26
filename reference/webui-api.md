@@ -22,9 +22,13 @@ GET /api/personas
   "personas": [
     {
       "name": "小星",
-      "status": "running",
-      "port": 3001,
-      "pid": 12345
+      "persona_name": "小星",
+      "running": true,
+      "active": false,
+      "has_config": true,
+      "pid": 12345,
+      "heartbeat_at": "2025-04-01T12:00:00Z",
+      "started_at": "2025-04-01T12:00:00Z"
     }
   ]
 }
@@ -41,16 +45,57 @@ Content-Type: application/json
 }
 ```
 
+### 激活人格
+
+切换当前操作的人格（仅激活状态，不启动进程）。
+
+```
+POST /api/personas/{name}/activate
+```
+
+响应：
+```json
+{
+  "success": true,
+  "active": "小星"
+}
+```
+
 ### 启动人格
+
+启动人格进程。如果已经运行则返回 already_running。
 
 ```
 POST /api/personas/{name}/start
 ```
 
+响应：
+```json
+{
+  "success": true,
+  "active": "小星",
+  "started": true,
+  "already_running": false,
+  "pid": 12345
+}
+```
+
 ### 停止人格
+
+停止人格进程，会发送 SIGTERM 并在超时后强制 SIGKILL。
 
 ```
 POST /api/personas/{name}/stop
+```
+
+响应：
+```json
+{
+  "success": true,
+  "stopped": true,
+  "pid": 12345,
+  "forced": false
+}
 ```
 
 ### 删除人格
