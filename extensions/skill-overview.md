@@ -129,6 +129,7 @@ flowchart TB
 | `unpin_message` | 取消钉住消息 | 普通（silent） |
 | `list_pinned_messages` | 查看当前钉住消息 | 普通 |
 | `send_sticker` | 发送表情包到当前聊天 | 适配器绑定（silent） |
+| `chat_with_developer` | 通过 QQ 私聊与开发者交流 | 适配器绑定（silent） |
 
 > 注意：部分技能可能因 `model_visible=false` 而不在列表中展示给 AI，例如 `list_pinned_messages` 已被隐藏，因为钉住消息已自动注入上下文。
 
