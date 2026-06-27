@@ -283,7 +283,7 @@ per-group deque:
 
 ### 信息注入
 
-用户信息通过 `PromptFactory.build_biography_section()` 格式化为 `【人物速查】` 段落，注入到 system prompt 中供 LLM 参考。
+用户信息通过 `PromptFactory.build_persona_profile_section()` 格式化为 `【人物速查】` 段落，注入到 system prompt 中供 LLM 参考。
 
 ### 蒸馏与更新（两层凝练）
 
