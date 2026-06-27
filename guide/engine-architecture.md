@@ -43,7 +43,11 @@ flowchart TB
 
     B --> B5{插件精确命令?}
     B5 -->|是| E
-    B5 -->|否| C
+    B5 -->|否| B6
+
+    B6["参与策略评估 ParticipationPolicy"]
+    B6 -->|SILENT| END
+    B6 -->|IMMEDIATE/DELAYED| C
 
     subgraph C[2. Cognition 认知]
         C1[情绪分析 emotion]
@@ -81,9 +85,13 @@ flowchart TB
         F2[名称记录]
         F3["交互统计 semantic record"]
     end
+
+    END[结束 不回复]
 ```
 
 > **插件命令快速拦截**：在感知阶段完成后，引擎会立即检查消息是否为已注册的插件精确命令（如 `/analyse`）。如果是，则直接跳转到执行阶段的插件执行流程（E），不再进行后续的认知分析和决策，实现零 LLM 成本的快速响应。
+
+> **参与策略评估**：如果不匹配插件命令，则进入参与策略评估（`ParticipationPolicy`）。该纯规则引擎基于信号分析（`SignalAnalysis`）计算多维分数（寻址、回复需求、社交机会、对话匹配、抑制），并动态计算阈值，决定是否值得进一步调用 LLM。若评估结果为 `SILENT`，则直接跳过后续认知分析和决策阶段，不生成回复，实现快速拒绝。若结果为 `IMMEDIATE` 或 `DELAYED`，则继续进入认知阶段进行细粒度分析。参与策略评估发生在感知阶段之后、认知阶段之前，是第一条非 LLM 过滤器。
 
 ## 核心子系统
 
@@ -127,6 +135,26 @@ flowchart TB
   "message_prefixes": ["#", "!"]
 }
 ```
+
+### 参与策略（ParticipationPolicy）
+
+参与策略是 Pipeline 内部的纯规则引擎，在感知阶段完成后、认知阶段之前执行。它基于信号分析（`SignalAnalysis`）评估消息，生成 `ParticipationDecision`，包含策略类型（IMMEDIATE/DELAYED/SILENT）、多维评分和阈值。引擎根据决策结果决定是否继续调用 LLM 进行认知分析。
+
+评分维度：
+| 分数 | 描述 |
+|------|------|
+| `addressing_score` | 消息是否直接指向 AI（提及、疑问、祈使） |
+| `reply_need_score` | 回复必要性（求助、紧急、情绪） |
+| `social_opportunity_score` | 社交机会（群聊热度、节奏、空窗） |
+| `conversation_fit_score` | 对话契合度（相关性、意图匹配） |
+| `suppression_score` | 抑制分数（过热、冷却、低信息、非人类） |
+
+决策流程：
+1. 私聊：阈值 0.2，直接回复或延迟。
+2. 群聊：根据寻址分数、回复需求、社交机会依次判断，任一条件满足且抑制不足则通过，否则 SILENT。
+3. 阈值受 `reply_frequency`（high/medium/low/selective）和传记亲和力调节。
+
+参与策略评估是零 LLM 调用的规则过滤器，与插件命令快速拦截共同构成前置快速路径。
 
 ### 策略引擎（ResponseStrategyEngine）
 
