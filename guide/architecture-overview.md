@@ -144,6 +144,7 @@ flowchart TD
 - engine 的 `_pending_reminders` 是共享的（所有 bridge 都能投递提醒）
 - Brain 是单例的，`chat()` 串行执行，`raw_call()` 可与 chat 并行
 - **Brain system prompt 变更**：v1.3 起，Brain 的默认 pre‑hook 不再自动拼接 `memory_spec` 部分。构建系统提示时，将由 `PromptFactory.assemble_chat()` 等上层调用负责组装客户化记忆相关指令。如需自定义记忆策略，请通过 `build_system_prompt()` 或在配置中调整。
+- **历史聊天信息格式调整**：v1.3 起，`ContextAssembler._entries_to_xml()` 在组装历史聊天信息时不再包含 `<conversation_history>` 外层标签，并且去掉了“尚未被日记记忆系统收录的近期原始消息”描述文字。历史消息直接以 `<message>` 标签形式嵌入，由上层（如 `PromptFactory.assemble_chat()`）负责包裹适当的说明。这减少了 token 占用，同时对历史上下文的解析没有影响。
 - **IdentityResolver 增强解析**：`IdentityResolver` 新增 `resolve_with_alias()` 方法，支持四层解析链（精确平台ID→Bot自识别→别名精确→模糊匹配），返回值含置信度和来源，用于开发者判断和用户解析。
 - 引擎支持配置文件热重载，通过写入 `engine_state/reload_requested` 标志文件触发，支持类型：`persona`、`orchestration`、`experience`、`provider`、`all`。其中 `provider` 类型会重新构建 Provider 实例，使 provider 配置变更无需重启引擎。
 
