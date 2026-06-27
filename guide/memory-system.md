@@ -193,6 +193,14 @@ per-group deque:
 - **日记知识抽取**：日记归档时，LLM 提取长期观点、关系等事实写入演化链
 - **数据迁移**：旧版 `UnifiedUser` 的 `distilled_points`、`identity_anchors`、`relationships` 通过 `migrate_to_evolution.py` 脚本批量迁移至演化链，标记为 `MetaTag.MIGRATION`，置信度设为 0.5
 
+### 修正回调
+
+`EvolutionChain` 支持注册修正回调，当一条活跃记录被修正（如被新记录取代）时，会自动通知所有已注册的回调。该机制主要用于保持相关组件的数据一致性。
+
+- `register_correction_callback(callback)`: 注册一个可调用对象，参数为 `(old_record, new_record_id)`。
+- 回调在记录状态变更为 `SUPERSEDED` 或新记录创建时被触发。
+- 内部通过 `_notify_correction` 方法遍历并调用所有回调。
+
 ### 用户画像的演进
 
 `UnifiedUserManager` 不再直接从对话中更新传记，而是依赖演化链中的事实记录进行整合。演化链与传记模型通过以下流程协同：
