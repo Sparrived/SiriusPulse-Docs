@@ -148,6 +148,18 @@ flowchart TB
 
 非立即回复进入延迟队列，在确认窗口后释放。支持队列合并（连续发送多条消息时合并为一条回复）。
 
+当引擎开启 **计划模式**（`plan_mode_enabled`）时，延迟队列循环会额外注册以下计划控制工具：
+
+| 工具名称 | 功能说明 | 适用范围 |
+|----------|----------|----------|
+| `enter_plan` | 进入隐藏计划模式，开始私有推理执行 | 普通聊天轮次 |
+| `exit_plan` | 正常结束计划模式并输出公开回复 | 计划模式轮次 |
+| `abort_plan` | 异常中止计划模式（不输出回复） | 计划模式轮次 |
+| `update_plan_progress` | 更新计划执行的公开进度快照（phase、summary、confidence、visible） | 计划模式轮次 |
+| `get_plan_status` | 读取当前群组的公开计划进度快照 | 普通聊天轮次（已有活跃计划时） |
+
+**公开进度感知**：若配置 `plan_mode_chat_awareness_enabled: true`，则在普通聊天轮次（非计划模式）的 system prompt 尾部自动注入当前活跃计划的公开进度快照（由 `format_public_plan_status` 生成），使 AI 在闲谈时也能感知后台计划的执行状态。该快照仅包含 `phase`、`summary`、`confidence` 等公开字段，不泄露私有推理内容。
+
 ## 消息钉住系统（PinnedMessageManager）
 
 消息钉住系统允许 AI 根据对话语境主动“钉住”重要消息，在后续多条回复的 prompt 中自动注入，确保关键信息不被遗忘。
