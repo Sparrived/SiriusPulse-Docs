@@ -293,6 +293,8 @@ sequenceDiagram
 > **v1.3 Hook 统一处理**：延迟回复的最终回复处理（表情包解析、去重、记忆记录、时间戳更新）已全部移入 `Brain` 的 post‑hooks，不再由 `DelayedQueueTasks` 内部手动管理。因此 `delayed_response_queue` 中的 `sticker_names`、`clean_text` 等字段直接依赖 `ChatResult` 中 hook 处理后的结果。
 >
 > **统一消息标签**：v1.4 起，所有 `<message>` XML 标签统一通过 `PromptFactory.tag_message()` 生成，保证格式一致。新增 `platform_message_id` 参数，用于缓存一致性和引用回复，该参数在延迟队列、即时回复、上下文组装中均会传递。
+>
+> **短确认消息取消待处理回复**：v1.5 起，当用户发送简短确认消息（如“好”、“知道了”、“ok”等）时，引擎会自动检查该用户是否有待处理的延迟回复。如果存在，则取消该回复项，避免在用户已表示认可后仍然发出延迟回复。此功能通过 `DelayedResponseQueue.close_pending_if_acknowledged()` 实现，完全基于规则，零 LLM 成本。
 
 ### 4.4 四种响应策略的触发条件
 
