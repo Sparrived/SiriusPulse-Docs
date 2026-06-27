@@ -91,6 +91,8 @@ flowchart TB
 
 联合分析情绪和意图。输入最近 N 条历史消息 + 当前消息，输出 `IntentAnalysisV3` + `EmotionState`。`IntentAnalysisV3` 包含 `sticker_caption`（动画表情缓存描述）和 `image_caption`（普通图片描述）字段。在回写 basic_memory 时，引擎优先使用 `sticker_caption`（如果存在）；对于动画表情消息，会移除无意义的文件哈希，替换为 `【动画表情：caption】` 格式；对于普通图片则使用 `【图片】【图片描述：caption】` 格式。如果所有图片（包括缓存的动画表情）都已解析且没有需要首次分析的多模态项目，则跳过 LLM 调用，直接使用规则分析。
 
+图像描述缓存（Image Caption Cache）：认知分析器内部维护一个 `_image_caption_cache` 字典，对于重复出现的图片（基于文件哈希或 URL 摘要生成稳定缓存键），可避免重复调用 LLM 进行描述分析，从而提升性能并降低 LLM 成本。缓存键计算支持文件路径、HTTP(S) URL 等不同形式。
+
 认知分析器集成了传记系统的用户别名数据，当群聊中存在用户别称映射时（如 `"小明" → 张三`），会将这些信息注入 LLM prompt，帮助模型区分 AI 自身的别名和其他用户的别称，从而更准确地计算 `directed_score`（消息指向 AI 的程度）。
 
 ### 阈值引擎（ThresholdEngine）
