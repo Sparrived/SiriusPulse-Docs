@@ -138,11 +138,12 @@ per-group deque:
 
 ### ContextAssembler 的日记集成
 
-`ContextAssembler.build_messages()` 在构建 prompt 时会：
+`ContextAssembler.build_messages()` 在构建 prompt 时接收 `output_spec` 和 `dynamic_context` 参数：
 
 1. 使用当前消息作为查询检索相关日记（`diary_top_k` 条）
-2. 将日记内容注入 system prompt 的背景信息区域
-3. 支持 token 预算控制（`diary_token_budget`）
+2. 日记内容与 `dynamic_context`（由 `PromptFactory.assemble_chat` 产出的传记、关系、记忆等）共同注入到当前 **user** 消息的头部，而非 system prompt
+3. `output_spec` 则保留在 **system** 消息中，作为稳定指令的一部分
+4. 支持 token 预算控制（`diary_token_budget`）
 
 ## 语义记忆（Semantic Memory）
 
