@@ -260,7 +260,7 @@ Brain 是引擎的 LLM 调用层，支持：
 
 生成回复后，引擎通过 `_hook_memory` 将回复写入 basic_memory，同时将 entry 对象（包含 `system_prompt`、`tags`、`conversation_chain` 字段，字段值仅记录模型输出相关标签，如表情包、钉住指令）追加到 basic_store，用于后续的快速检索和同步。
 
-- `system_prompt`: 本次 LLM 调用使用的完整 system prompt
+- `system_prompt`: 本次 LLM 调用使用的 system prompt（仅包含稳定的输出规范和基础指令，动态上下文已注入到 user 消息中）
 - `tags`: 模型输出相关标签（表情包名称、钉住/取消钉住操作）
 - `conversation_chain`: 完整的 LLM 消息链，包含 system prompt 和用户消息（user/assistant 交替），用于上下文回溯和 prompt 重建
 
