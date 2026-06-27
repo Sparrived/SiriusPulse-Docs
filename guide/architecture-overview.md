@@ -179,11 +179,12 @@ flowchart TD
     end
 
     subgraph Decision["③ 决策层（纯规则，零 LLM 成本）"]
-        C4 --> D1["RhythmAnalyzer<br/>heat_level / pace / topic_stability"]
-        D1 --> D2["ThresholdEngine<br/>threshold = base × activity × engagement × time"]
-        D2 --> D3["ResponseStrategyEngine<br/>IMMEDIATE / DELAYED / SILENT / PROACTIVE"]
-        D3 --> D4["更新 AssistantEmotionState"]
-        D4 --> D5["emit DECISION_COMPLETED"]
+        C4 --> D1["ParticipationPolicy.evaluate()"]
+        D1 --> D2["计算 addressing_score / reply_need_score<br/>social_opportunity_score / conversation_fit_score<br/>及 suppression_score"]
+        D2 --> D3["自适应阈值比较<br/>确定策略：IMMEDIATE / DELAYED / SILENT / PROACTIVE"]
+        D3 --> D4["返回 ParticipationDecision"]
+        D4 --> D5["更新 AssistantEmotionState"]
+        D5 --> D6["emit DECISION_COMPLETED"]
     end
 
     subgraph Execution["④ 执行层"]
