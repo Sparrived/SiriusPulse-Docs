@@ -94,7 +94,7 @@ GET /api/memory/{persona_name}/groups/{group_id}
 ```
 
 响应包含：
-- `entries`: 基础记忆条目列表（每个条目包含 `content`、`role`、`tags`、`conversation_chain` 等字段）
+- `entries`: 基础记忆条目列表（每个条目包含 `content`、`role`、`tags`、`conversation_chain`、`intent_scores` 等字段）
 - `heat`: 群聊热度
 - `diary_entries`: 相关日记
 
@@ -174,6 +174,8 @@ GET /api/personas/{name}/conversations
 - **模型回复**中的标签：`sticker`（表情包，label 格式如 `表情包: 开心`）、`pin`（钉住消息）、`unpin`（取消钉住）
 
 `conversation_chain` 字段（仅 `assistant` 角色消息拥有）记录了该条回复生成时使用的完整 LLM 调用消息链，格式为一个数组，每个元素包含 `role` 和 `content` 字段，用于调试和追溯。
+
+`intent_scores` 字段（仅 `user` 角色消息可能拥有）记录了系统对用户消息的意图分析得分，包含 `social_intent`（社交意图类型）、`directed_score`（指向性分数）、`urgency_score`（紧急度）、`relevance_score`（相关性）、`sarcasm_score`（讽刺度）、`entitlement_score`（资格感）和 `turn_gap_readiness`（对话间隙准备度）等数值字段，用于调试和展示。
 
 ## Plugin 管理
 

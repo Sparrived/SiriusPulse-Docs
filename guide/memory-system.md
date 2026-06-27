@@ -38,6 +38,7 @@ per-group deque:
 | `multimodal_inputs` | 多模态输入列表（如图片） |
 | `tags` | 内容标签（表情包、钉住等） |
 | `conversation_chain` | **完整 LLM 消息链**（详见下文） |
+| `intent_scores` | 意图分数字典（包含 `social_intent`、`directed_score`、`urgency_score`、`relevance_score`、`sarcasm_score`、`entitlement_score`、`turn_gap_readiness` 等，由认知阶段评估后填充） |
 
 `conversation_chain` 字段用于记录 AI 回复生成时所使用的完整消息列表，包含 `system` prompt 及后续 `user` / `assistant` 交替消息，便于对话历史页面还原 LLM 调用上下文。
 
