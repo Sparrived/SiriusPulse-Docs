@@ -14,12 +14,12 @@ flowchart TB
 
 ## 基础记忆（Basic Memory）
 
-**最底层的短期记忆**，每群独立维护一个固定大小的双端队列。
+**最底层的短期记忆**，每群独立维护一个双端队列。队列大小不再固定由 `hard_limit` 裁剪，而是保留所有未检出的原始消息，直到结构化记忆单元覆盖并清理。
 
 ```python
 # 内部结构
 per-group deque:
-  [entry_1, entry_2, ..., entry_N]  # N = hard_limit (默认 30)
+  [entry_1, entry_2, ..., entry_N]  # N = 未检出的消息总数（hard_limit 默认为 0 表示不裁剪）
 ```
 
 ### 条目结构
@@ -45,7 +45,7 @@ per-group deque:
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `hard_limit` | 30 | 每群最大保留条目数 |
+| `hard_limit` | 0 | 每群最大保留条目数（0 表示不自动裁剪，依赖检查点机制清理已覆盖的消息） |
 | `context_window` | 5 | 活跃上下文窗口（最近 5 条用于 LLM prompt） |
 
 ### 操作
@@ -54,6 +54,7 @@ per-group deque:
 - `get_context(n)`: 获取最近 n 条上下文（用于 prompt 构建）
 - `get_archive_candidates()`: 获取超出 context_window 的旧条目（用于日记归档）
 - `get_entries_by_user()`: 跨群查询某用户发言
+- `remove_entries_by_ids(group_id, entry_ids)`: 根据条目 ID 集合从活跃窗口中移除已被记忆单元覆盖的消息，并更新热度状态。
 
 ### 热度计算
 
@@ -75,11 +76,11 @@ per-group deque:
 
 后台任务 `_background_refiner` 会根据冷状态分层处理：
 - `COOLING` → 情景提取（Situation Extraction）：对近期对话进行结构化摘要
-- `COLD` → 优先从 `situation_store` 获取未处理的已提取情景（Situation），若有则基于这些情景生成日记并切分为切片，之后标记情景为已处理；若无情景则尝试从 basic_memory 的候选消息中补提情景（补提后再次获取情景），补提仍无结果时回退到旧逻辑：将旧消息归档为日记，同时通过 LLM 提取三元组存入演化链。
+- `COLD` → 优先从 `situation_store` 获取未处理的已提取情景（Situation），若有则基于这些情景生成日记并切分为切片，之后标记情景为已处理；若无情景则尝试从 basic_memory 中未被记忆单元覆盖的候选消息中补提情景（补提后再次获取情景），补提仍无结果时回退到旧逻辑：将旧消息归档为日记，同时通过 LLM 提取三元组存入演化链。
 
 ## 日记系统（Diary）
 
-当群聊进入 `COLD` 状态时，系统优先使用该群已经提取的情景（Situation）来生成结构化日记。若没有已提取的情景，则尝试从 basic_memory 中超出窗口的旧消息中补提情景，补提成功后生成日记。若仍无法获取情景，则直接归档旧消息为日记。冷状态由 `ColdDetector` 根据热度与沉寂时长综合判定。
+当群聊进入 `COLD` 状态时，系统优先使用该群已经提取的情景（Situation）来生成结构化日记。若没有已提取的情景，则尝试从 basic_memory 中未被记忆单元覆盖的旧消息中补提情景，补提成功后生成日记。若仍无法获取情景，则直接归档旧消息为日记。冷状态由 `ColdDetector` 根据热度与沉寂时长综合判定。
 
 ### 组件
 
@@ -378,7 +379,7 @@ flowchart TB
     C --> C2["diary_retriever.retrieve<br>天气 → 找到上周郊游日记"]
     C1 --> D["ContextAssembler.build_messages()"]
     C2 --> D
-    D --> D1["basic_memory.get_context(5)<br>最近5条对话"]
+    D --> D1["basic_memory.get_all()<br>全部未检出的消息"]
     D --> D2["diary entries<br>相关日记"]
     D --> D3["biography<br>人物画像"]
     D1 --> E[组装成完整 prompt]
