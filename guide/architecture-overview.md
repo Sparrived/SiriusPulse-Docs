@@ -218,6 +218,10 @@ flowchart TD
 
 > **插件命令快速拦截**：引擎新增插件命令拦截机制。在感知层完成消息记录后、认知层进行 LLM 或规则分析之前，引擎会检查消息内容是否匹配已注册的插件命令（如 `/ca analyse`）。若匹配，则直接执行插件逻辑并返回结果，避免了 LLM 对命令模式的错误理解。此步骤完全基于规则，零 LLM 成本，确保插件命令的及时响应。
 >
+> **显式提及促进（Explicit Mention Promotion）**：当消息显式提及当前 bot（通过名称或别名匹配）时，引擎会立即将已存在的待处理延迟回复项提升为即时回复（window_seconds 降为 0，策略改为 IMMEDIATE），并触发延迟回复事件。同时，该消息本身会被作为低信息量合并到待处理项中。这确保了 bot 被点名时能快速响应，避免被其他回复抢占话题。
+>
+> **低信息量消息丢弃**：引擎新增 `_is_low_information_pending_message` 判断，过滤纯语气词（如“哈”“草”“笑死”）、极短文本（≤2字符）、无问号的碎片表达。当符合条件时，该消息不会合并到现有待处理回复中，也不触发新回复，仅更新背景状态。此步骤完全基于规则，零 LLM 成本，避免无聊刷屏干扰回复节奏。
+>
 > **引用消息解析**：NapCatAdapter 在解析消息段时，新增引用消息（reply 类型）的处理。当检测到回复段时，Adapter 会通过 NapCat API `get_msg` 获取被引用消息的内容和发送者信息，并将其格式化为 `[引用消息 msg_id="xxx" speaker="张三"] 内容 [/引用消息]` 注入到 prompt 中。这确保了 AI 在生成回复时能理解回复的上下文。此步骤完全基于规则，零 LLM 成本。
 
 ### 4.2 认知层内部细节
@@ -293,6 +297,8 @@ sequenceDiagram
 > **v1.3 Hook 统一处理**：延迟回复的最终回复处理（表情包解析、去重、记忆记录、时间戳更新）已全部移入 `Brain` 的 post‑hooks，不再由 `DelayedQueueTasks` 内部手动管理。因此 `delayed_response_queue` 中的 `sticker_names`、`clean_text` 等字段直接依赖 `ChatResult` 中 hook 处理后的结果。
 >
 > **统一消息标签**：v1.4 起，所有 `<message>` XML 标签统一通过 `PromptFactory.tag_message()` 生成，保证格式一致。新增 `platform_message_id` 参数，用于缓存一致性和引用回复，该参数在延迟队列、即时回复、上下文组装中均会传递。
+>
+> **硬即时防抖（Hard Immediate Debounce）**：v1.5 新增 `_HARD_IMMEDIATE_DEBOUNCE_SECONDS`（1秒）用于被提及、私聊或高 urgency（≥85）的立即回复场景。当决策上下文中包含 `hard_immediate: true` 时，窗口时间强制设为 1秒，确保快速响应。同时，`Pipeline` 会为每个信号计算 `freshness_ttl_seconds`（新鲜度生存时间），过期后队列项自动取消，避免陈旧回复发出。freshness TTL 根据不同信号类型动态设定：提及/私聊 60秒，help_seeking 40秒，reply_needed 30秒等。
 
 ### 4.4 四种响应策略的触发条件
 
@@ -302,6 +308,8 @@ sequenceDiagram
 | **DELAYED** | 一般性对话、话题间隙不够 | 加入队列，等自然间隙再回 |
 | **SILENT** | 无关话题、低 relevance、冷却中 | 不回复，只后台学习 |
 | **PROACTIVE** | 群聊沉默过久、记忆触发、情感触发 | 主动发起新话题 |
+
+> **hard_immediate 子策略**：当消息提及 bot、私聊或 urgency≥85 时，IMMEDIATE 策略的窗口时间缩短至 1秒（`_HARD_IMMEDIATE_DEBOUNCE_SECONDS`），并设置 freshness_ttl 确保及时、新鲜的回复。该子策略通过决策上下文的 `hard_immediate: true` 标识。
 
 ---
 

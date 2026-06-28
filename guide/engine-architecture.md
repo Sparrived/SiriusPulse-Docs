@@ -85,6 +85,10 @@ flowchart TB
 
 > **插件命令快速拦截**：在感知阶段完成后，引擎会立即检查消息是否为已注册的插件精确命令（如 `/analyse`）。如果是，则直接跳转到执行阶段的插件执行流程（E），不再进行后续的认知分析和决策，实现零 LLM 成本的快速响应。
 
+> **消息提及与低信息量丢弃**：在感知阶段完成后、认知分析之前，引擎会进一步检查两条规则：
+> 1. **明确提及 AI**：若消息明确提到当前 AI 的名称或别名（`_message_explicitly_mentions_current_bot`），引擎会合并消息并调用 `promote_pending` 提升现有待回复项，然后执行后台更新，直接返回 `{"strategy": "promoted", "reply": None}` 跳过本次完整管线。
+> 2. **低信息量消息**：若消息内容为低信息量填充文本（如纯表情、单字、无问号的短句等），引擎会直接执行后台更新并返回 `{"strategy": "dropped", "reply": None}`，避免无意义消息占用算力。
+
 ## 核心子系统
 
 ### 认知分析器（CognitionAnalyzer）
@@ -130,8 +134,13 @@ flowchart TB
 
 ### 策略引擎（ResponseStrategyEngine）
 
-根据阈值和意图选择策略：
-- **IMMEDIATE**: 直接回复
+根据阈值和意图选择策略，决策上下文（`StrategyDecision.context`）包含以下字段：
+- `participation`: 参与度分析结果（字典）
+- `hard_immediate`（bool）: 当消息明确提及 AI 或为私聊或紧急度≥85 时，Pipeline 会设置该标记，使延迟队列强制使用 1s 的最小等待窗口（`_HARD_IMMEDIATE_DEBOUNCE_SECONDS`）。
+- `freshness_ttl_seconds`（float）：由 Pipeline 根据信号属性（is_mentioned、私聊、社交意图等）动态计算的队列项新鲜度 TTL，超过此时间未触发的队列项将被自动取消。
+
+策略类型：
+- **IMMEDIATE**: 直接回复（若上下文标记 `hard_immediate`，等待窗口缩短至 1 秒）
 - **DELAYED**: 延迟回复（等待确认窗口）
 - **SILENT**: 不回复
 - **PLUGIN**: 执行插件命令
@@ -147,6 +156,10 @@ flowchart TB
 ### 延迟响应队列（DelayedResponseQueue）
 
 非立即回复进入延迟队列，在确认窗口后释放。支持队列合并（连续发送多条消息时合并为一条回复）。
+
+队列项具有 **新鲜度 TTL** 机制：当队列项等待时间超过 `freshness_ttl_seconds`（由 Pipeline 在决策阶段根据信号属性动态计算）时，该项将自动取消，避免对过时消息进行回复。
+
+引擎提供 **主动提升（promote）** 方法 `promote_pending`：在感知阶段后，若消息明确提及 AI（`_message_explicitly_mentions_current_bot` 返回 True），引擎会立即将群组中现有的 `pending` 项（仅 `lane="chat"`）的等待窗口缩短至 `0`，并将策略强制设置为 `IMMEDIATE`，上下文标记上 `hard_immediate: True`，从而在下一轮延迟队列轮询中即刻触发回复。这确保了当用户 @AI 或提及其名称时，AI 能快速响应。
 
 ## 消息钉住系统（PinnedMessageManager）
 
