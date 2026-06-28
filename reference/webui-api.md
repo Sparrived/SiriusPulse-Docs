@@ -381,3 +381,4 @@ ws://localhost:8080/ws/events?persona={name}
 - `token_usage`: Token 用量更新
 - `skill_executed`: 技能执行完成
 - `plugin_executed`: 插件执行完成
+- `delayed_response_triggered`: 延迟回复被提前触发（如因提及时机加速或新鲜度过期取消）
