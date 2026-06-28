@@ -24,6 +24,7 @@ engine._biography_view     # BiographyView: 传记视图，实时计算用户传
 engine._bot_platform_uids  # dict[str,str]: Bot 在各平台的 UID
 engine._slice_store        # DiarySliceStore: 日记切片文件持久化
 engine._slice_vector_store # DiarySliceVectorStore: 日记切片 ChromaDB 向量存储
+engine.memory_unit_manager  # MemoryUnitManager: 结构化记忆单元管理器
 ```
 
 ## 5 阶段管线
@@ -220,8 +221,7 @@ Brain 是引擎的 LLM 调用层，支持：
 |------|------|------|
 | 延迟响应轮询 | 1s | 释放到期延迟回复 |
 | 主动行为评估 | 可变 | 评估是否需要主动发起对话 |
-| 日记促进与精炼 | 可变 | 群聊沉寂后归档对话，结合冷检测、情景提取和演化链精炼；传递 storage 和 user_manager 实例加载群组别名映射及用户信息，提升情景提取准确性；从候选消息中过滤已生成日记或已提取情景的消息；切片会记录关联的情景ID（situation_ids）；在COLD状态下优先使用未处理的情景生成日记，支持情景补提；生成的切片会持久化到文件并索引到 ChromaDB 向量库，成功后标记情景为已处理 |
-| 后台精炼 | 可变 | 对已完成的日记切片进行二次精炼，提取情景和演化事实；传递 storage 实例以利用别名映射 |
+| 记忆检查点 | 可变 | 群聊沉寂后，将 basic memory 条目检查点化为结构化记忆单元；传递 storage 和 user_manager 实例加载群组别名映射及用户信息；从候选消息中过滤已检查点的条目；生成的记忆单元持久化到文件并索引到向量库，成功后标记条目为已检查点 |
 | 记忆维护 | 可变 | 语义记忆整理和衰减 |
 | 状态持久化 | 300s | 全量保存运行时状态 |
 | 提醒检查 | 10s | 到期提醒分发（来自 reminder skill） |

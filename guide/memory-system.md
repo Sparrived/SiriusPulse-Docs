@@ -75,11 +75,11 @@ per-group deque:
 
 后台任务 `_background_refiner` 会根据冷状态分层处理：
 - `COOLING` → 情景提取（Situation Extraction）：对近期对话进行结构化摘要
-- `COLD` → 优先从 `situation_store` 获取未处理的已提取情景（Situation），若有则基于这些情景生成日记并切分为切片，之后标记情景为已处理；若无情景则尝试从 basic_memory 的候选消息中补提情景（补提后再次获取情景），补提仍无结果时回退到旧逻辑：将旧消息归档为日记，同时通过 LLM 提取三元组存入演化链。
+- `COLD` → 优先从 `situation_store` 获取未处理的已提取情景（Situation），若有则基于这些情景生成记忆单元并切分为切片，之后标记情景为已处理；若无情景则尝试从 basic_memory 的候选消息中补提情景（补提后再次获取情景），补提仍无结果时回退到旧逻辑：将旧消息归档为记忆单元，同时通过 LLM 提取三元组存入演化链。
 
 ## 日记系统（Diary）
 
-当群聊进入 `COLD` 状态时，系统优先使用该群已经提取的情景（Situation）来生成结构化日记。若没有已提取的情景，则尝试从 basic_memory 中超出窗口的旧消息中补提情景，补提成功后生成日记。若仍无法获取情景，则直接归档旧消息为日记。冷状态由 `ColdDetector` 根据热度与沉寂时长综合判定。
+当群聊进入 `COLD` 状态时，系统优先使用该群已经提取的情景（Situation）来生成结构化记忆单元。若没有已提取的情景，则尝试从 basic_memory 中超出窗口的旧消息中补提情景，补提成功后生成记忆单元。若仍无法获取情景，则直接归档旧消息为记忆单元。冷状态由 `ColdDetector` 根据热度与沉寂时长综合判定。
 
 ### 组件
 
@@ -89,10 +89,10 @@ per-group deque:
 | `DiaryStore` | 日记持久化存储 |
 | `DiaryVectorStore` | 日记向量索引（ChromaDB） |
 | `DiaryRetriever` | 语义检索相关日记 |
-| `DiaryConsolidator` | 合并多条日记为更高层的摘要 |
 | `DiarySliceStore` | 日记切片的文件持久化存储（JSON 文件，按群组索引），支持按 ID 批量删除（`delete_by_ids`） |
 | `DiarySliceVectorStore` | 日记切片向量的 ChromaDB 持久化索引 |
 | `DiarySliceRetriever` | 日记切片的三路召回检索：语义（ChromaDB）+ 三元组精确匹配 + 关键词降级 |
+| `MemoryUnitManager` | 记忆单元管理器，负责从对话中生成结构化记忆单元并持久化，取代旧的日记合并流程 |
 
 ### 日记切片
 
@@ -190,7 +190,7 @@ per-group deque:
 ### 学习机制
 
 - **情景提取（Situation Extraction）**：在群聊暂冷（`COOLING`）时，`SituationExtractor` 对近期对话进行结构化提取，生成三元组存入演化链；当群聊深冷（`COLD`）且无已提取情景时，也会尝试补提情景。`extract` 方法新增 `storage` 和 `user_manager` 参数，`storage` 用于获取群组的别名映射，`user_manager` 用于获取用户信息，提升实体识别的准确率
-- **日记知识抽取**：日记归档时，LLM 提取长期观点、关系等事实写入演化链
+- **记忆单元知识抽取**：记忆单元归档时，LLM 提取长期观点、关系等事实写入演化链
 - **数据迁移**：旧版 `UnifiedUser` 的 `distilled_points`、`identity_anchors`、`relationships` 通过 `migrate_to_evolution.py` 脚本批量迁移至演化链，标记为 `MetaTag.MIGRATION`，置信度设为 0.5
 
 ### 用户画像的演进
@@ -360,13 +360,15 @@ AI 在回复中使用特殊语法来钉住或取消钉住消息：
 {
   "memory_depth": 5,
   "cross_group_memory": true,
-  "pinned_message_max_carry_count": 100
+  "pinned_message_max_carry_count": 100,
+  "memory_unit_volume_threshold": 8
 }
 ```
 
 - `memory_depth`: 每次加载的历史消息数
 - `cross_group_memory`: 是否启用跨群记忆
 - `pinned_message_max_carry_count`: 钉住消息的最大携带次数，超过后自动取消
+- `memory_unit_volume_threshold`: 触发记忆单元检查点的候选消息数量阈值，超过此数时才执行记忆单元生成
 
 ## 数据流示例
 
