@@ -175,6 +175,250 @@ GET /api/personas/{name}/conversations
 
 `conversation_chain` 字段（仅 `assistant` 角色消息拥有）记录了该条回复生成时使用的完整 LLM 调用消息链，格式为一个数组，每个元素包含 `role` 和 `content` 字段，用于调试和追溯。
 
+### 用户资料管理
+
+#### 获取用户列表
+
+```
+GET /api/personas/{name}/users
+```
+
+查询参数：
+- `group_id`（必填）：指定群组 ID
+- `search`（可选）：按名称或 user_id 模糊搜索
+
+响应：
+```json
+{
+  "users": [
+    {
+      "user_id": "123",
+      "name": "用户名称",
+      "group_id": "456",
+      "engagement_rate": 0.5,
+      "interaction_count": 10,
+      "first_interaction_at": "2024-01-01T00:00:00",
+      "last_interaction_at": "2024-06-01T00:00:00"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### 获取用户详情
+
+```
+GET /api/personas/{name}/users/{user_id}?group_id={group_id}
+```
+
+响应：
+```json
+{
+  "user": {
+    "user_id": "123",
+    "name": "用户名称",
+    "group_id": "456",
+    "engagement_rate": 0.5,
+    "interaction_count": 10,
+    "first_interaction_at": "2024-01-01T00:00:00",
+    "last_interaction_at": "2024-06-01T00:00:00"
+  }
+}
+```
+
+#### 更新用户资料
+
+```
+PUT /api/personas/{name}/users/{user_id}
+Content-Type: application/json
+
+{
+  "group_id": "456",
+  "name": "新名称",
+  "engagement_rate": 0.8,
+  "interaction_count": 20,
+  "first_interaction_at": "2024-01-01T00:00:00",
+  "last_interaction_at": "2024-06-01T00:00:00"
+}
+```
+
+`group_id` 为必填参数，可通过 body 或 query 传入。
+
+响应：
+```json
+{
+  "success": true,
+  "user": { ... }
+}
+```
+
+#### 删除用户资料
+
+```
+DELETE /api/personas/{name}/users/{user_id}?group_id={group_id}
+```
+
+删除指定群组下的用户资料。若不传 `group_id`，则删除所有群组中该用户的资料。
+
+响应：
+```json
+{
+  "success": true,
+  "deleted": 1
+}
+```
+
+### 日记管理
+
+#### 创建日记条目
+
+```
+POST /api/personas/{name}/diary
+Content-Type: application/json
+
+{
+  "group_id": "123",
+  "content": "今天发生了……",
+  "summary": "今天总结",
+  "keywords": ["关键词1", "关键词2"],
+  "created_at": "2024-06-01T12:00:00Z",
+  "source_ids": ["msg1", "msg2"],
+  "source_diary_ids": [],
+  "merge_count": 0
+}
+```
+
+响应：
+```json
+{
+  "success": true,
+  "entry": { ... }
+}
+```
+
+#### 更新日记条目
+
+```
+PUT /api/personas/{name}/diary/{entry_id}
+Content-Type: application/json
+
+{
+  "group_id": "123",
+  "content": "更新后的内容",
+  "summary": "更新后总结",
+  "keywords": ["新关键词"]
+}
+```
+
+若 `group_id` 改变，条目会移动到对应群组的日记文件中。
+
+响应：
+```json
+{
+  "success": true,
+  "entry": { ... }
+}
+```
+
+#### 删除日记条目
+
+```
+DELETE /api/personas/{name}/diary/{entry_id}
+```
+
+响应：
+```json
+{
+  "success": true
+}
+```
+
+### 词汇表管理
+
+#### 获取词汇表
+
+```
+GET /api/personas/{name}/glossary
+```
+
+查询参数：
+- `search`（可选）：搜索术语或定义
+- `page`（可选）：页码，默认1
+- `size`（可选）：每页条数，默认20
+
+响应：
+```json
+{
+  "terms": [
+    {
+      "term": "示例术语",
+      "definition": "示例定义",
+      "source": "manual",
+      "confidence": 0.8,
+      "usage_count": 1,
+      "context_examples": [],
+      "related_terms": [],
+      "domain": "custom"
+    }
+  ],
+  "stats": {},
+  "total": 1
+}
+```
+
+#### 创建术语
+
+```
+POST /api/personas/{name}/glossary
+Content-Type: application/json
+
+{
+  "term": "新术语",
+  "definition": "新术语的定义",
+  "source": "manual",
+  "confidence": 0.8,
+  "usage_count": 1,
+  "context_examples": ["例句1"],
+  "related_terms": ["相关术语"],
+  "domain": "custom"
+}
+```
+
+响应：
+```json
+{
+  "success": true,
+  "term": { ... }
+}
+```
+
+#### 更新术语
+
+```
+PUT /api/personas/{name}/glossary/{term}
+Content-Type: application/json
+
+{
+  "definition": "更新后的定义",
+  "source": "manual",
+  "confidence": 0.9,
+  "usage_count": 5,
+  "context_examples": ["新例句"],
+  "related_terms": ["新相关术语"],
+  "domain": "custom"
+}
+```
+
+`{term}` 需要 URL 编码。
+
+响应：
+```json
+{
+  "success": true,
+  "term": { ... }
+}
+```
+
 ## Plugin 管理
 
 ### 获取插件列表
