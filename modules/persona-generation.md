@@ -1,37 +1,22 @@
-# 人格资产生成模块 (persona_generation/)
+# 人格生成模块
 
-## 模块概述
+## 位置
 
-人格资产生成模块负责从模板或用户输入生成人格配置资产，支持多种生成方式。
+`sirius_pulse/persona_generation/`
 
-## 核心文件
+## 职责
 
-| 文件 | 职责 |
-|------|------|
-| `templates.py` | 人格模板定义 |
-| `builders.py` | 人格构建器 |
+人格生成模块提供模板和构建器，用于从访谈或结构化输入生成人格配置。
 
-## 生成方式
+## 关键协作
 
-1. **模板生成**：从预定义模板快速创建人格
-2. **关键词生成**：从关键词列表生成人格
-3. **访谈生成**：通过问答形式生成人格
-4. **角色扮演桥接**：从外部角色扮演配置导入
+- 由 CLI、WebUI 或人格 worker 初始化。
+- 与 `core/` 的对话管线通过明确的数据模型协作。
+- 配置来源优先来自 `data/global_config.json` 和 `data/personas/<name>/`。
+- 运行时状态会被 WebUI API、日志和事件流观察。
 
-## 使用示例
+## 排查建议
 
-```python
-from sirius_pulse.persona_generation import load_generated_agent_library
-
-agents, selected = load_generated_agent_library(work_path)
-```
-
-## 人格资产目录
-
-```
-data/personas/{name}/
-    ├── persona.json           # 人格定义
-    ├── orchestration.json     # 模型编排
-    ├── adapters.json          # 平台适配器
-    └── experience.json        # 体验参数
-```
+1. 先确认相关配置文件是否存在且 JSON 合法。
+2. 再检查 WebUI API 返回值和日志。
+3. 最后定位对应模块的类和函数，避免跨层修改。

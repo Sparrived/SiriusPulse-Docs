@@ -1,7 +1,5 @@
 # 参考
 
-详细的配置和 API 参考文档。
-
 ## 配置参考
 
 - [全局配置](./global-config)
@@ -10,9 +8,11 @@
 
 ## API 参考
 
+- [CLI](./cli)
 - [Python API](./python-api)
 - [WebUI API](./webui-api)
+- [Brain API](./brain-api)
+- [AI API](./ai-api)
 - [Skills API](./skills-api)
 - [Plugins API](./plugins-api)
-- [AI API 参考](./ai-api)
-- [Brain API](./brain-api)
+- [开发参考](./development)

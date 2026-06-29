@@ -1,29 +1,9 @@
-# 技能开发 API
+# Skill 编写参考
 
-技能 API 的详细参考文档，请查看：
+该页面记录与 Skill 编写参考 相关的参考信息。当前实现已并入 WebUI、记忆和扩展 API。
 
-- [Skills API 参考](./skills-api) — 每个 API 的详细说明和使用示例
+- WebUI 路由总览：[WebUI API](./webui-api)
+- 记忆系统：[记忆系统](../guide/memory-system)
+- Python 入口：[Python API](./python-api)
 
-## 快速导入
-
-```python
-from sirius_pulse.skills.api import (
-    SkillResult,
-    SkillEngineContext,
-    SkillInvocationContext,
-    SkillChainContext,
-    BackgroundTaskSpec,
-    TriggerSpec,
-    SkillPassiveType,
-    SkillParameter,
-    SkillDataStore,
-    strip_skill_calls,
-    ensure_developer_access,
-)
-```
-
-## 相关文档
-
-- [技能编写指南](../extensions/skill-authoring) — 完整教程与示例
-- [被动技能开发](../extensions/skill-passive) — 后台/事件驱动技能
-- [内置技能参考](../extensions/skill-builtin) — 学习现有技能写法
+排查时请以 `sirius_pulse/webui/routes.py`、对应 `webui/*_api.py` 文件和当前人格数据目录为准。

@@ -1,89 +1,11 @@
-# 人格配置
+# 人格配置参考
 
-所有人格相关配置在 **WebUI → 人格管理 / 适配器 / 体验参数 / 模型编排** 页面操作。无需直接编辑文件。以下为各字段的参考说明。
+人格配置位于 `data/personas/<name>/`。
 
----
-
-## persona.json — 角色定义
-
-在 **人格管理** 页面填写。
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| 角色名 | str | ✅ | 人格唯一标识 |
-| 别名 | list[str] | ❌ | 别名列表，用逗号分隔 |
-| 背景故事 | str | ❌ | 角色背景，影响回复偏好 |
-| 核心性格 | str | ✅ | 性格关键词描述 |
-| 情绪表达 | str | ❌ | 情绪如何呈现 |
-| 说话风格 | str | ❌ | 语言习惯 |
-| 回应习惯 | str | ❌ | 回复套路 |
-| 社交偏好 | str | ❌ | 群体参与偏好 |
-| 幽默风格 | str | ❌ | 笑点类型 |
-| 交流风格 | str | ❌ | 健谈 / 正常 / 选择性 |
-| 敏感话题 | list[str] | ❌ | AI 主动回避的话题 |
-| 性别 | str | ❌ | male / female / other |
-| 年龄段 | str | ❌ | child / teen / young_adult / adult / elder |
-| 兴趣 | list[str] | ❌ | 兴趣标签 |
-| 语言 | str | ❌ | 语言代码，如 `zh-CN` |
-
----
-
-## orchestration.json — 模型编排
-
-在 **模型编排** 页面操作。
-
-### 通用模型
-
-| 字段 | 默认值 | 说明 |
-|------|--------|------|
-| 分析模型 | (必填) | 认知分析、记忆提取使用的模型 |
-| 对话模型 | (必填) | 回复生成、主动发言、被动技能、GitHub 通知的模型 |
-| 记忆维护模型 | 同 analysis | 日记生成/合并、传记蒸馏/更新的模型 |
-| 插件模型 | 同 analysis | 插件生成/分析/渲染/原生调用的模型 |
-
-### 任务级覆盖
-
-每个子任务可单独配置 model、temperature、max_tokens，通过点击 ⚙ 展开高级面板。
-
-可覆盖的任务：`cognition_analyze`、`memory_extract`、`response_generate`、`proactive_generate`、`passive_skill`、`github_monitor_notify`、`diary_generate`、`diary_consolidate`、`biography_distill`、`biography_update`、`plugin_generate`、`plugin_analyze`、`plugin_render`、`plugin_raw`。
-
-完整列表参见 [引擎架构](/guide/engine-architecture)。
-
----
-
-## adapters.json — 平台适配器
-
-在 **适配器** 页面配置。
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| 适配器类型 | str | `napcat` |
-| WS 地址 | str | NapCat WebSocket 地址 |
-| QQ | int | 账号 |
-| WS Token | str | 认证 token |
-| 群聊白名单 | list[int] | 留空不限制 |
-| 私聊白名单 | list[int] | 留空不限制 |
-| 其他 AI 账号 | list[int] | 群中其他 AI 的 QQ，避免互相回复 |
-
----
-
-## experience.json — 体验参数
-
-在 **体验参数** 页面微调。
-
-| 字段 | 默认值 | 说明 |
-|------|--------|------|
-| 参与灵敏度 | `0.5` | 0~1，越高越容易参与对话 |
-| 回复模式 | `auto` | auto / always / never |
-| 活泼度 | `0.5` | 0~1，控制语气活泼程度 |
-| 主动行为 | `true` | 是否主动发起对话 |
-| 主动间隔 | `300` (s) | 主动发言最小间隔 |
-| 延迟回复 | `true` | 是否等待确认窗口 |
-| 最小回复间隔 | `0` (s) | 两次回复最小间隔 |
-| 回复频率窗口 | `60` (s) | 频率统计窗口 |
-| 窗口内最大回复数 | `8` | 窗口内最多回复数 |
-| 被名时豁免 | `true` | 被@或叫名字时跳过频率限制 |
-
-| 技能超时 | `30` (s) | 技能执行超时 |
-| 插件超时 | `30` (s) | 插件执行超时 |
-| 消息钉住最大携带次数 | `100` | 钉住消息在每次 prompt 中携带的次数上限，超过后自动取消 |
+| 文件 | API | 说明 |
+|---|---|---|
+| `persona.json` | `/api/persona/persona` | 人格基础设定。 |
+| `orchestration.json` | `/api/persona/orchestration` | 模型编排与回复策略。 |
+| `experience.json` | `/api/persona/experience` | 人格经历和背景。 |
+| `adapters.json` | `/api/persona/adapters` | 平台适配器。 |
+| `persona.db` | 内部使用 | 统一数据库。 |

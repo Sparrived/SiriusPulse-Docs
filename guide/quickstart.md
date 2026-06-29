@@ -1,89 +1,54 @@
 # 快速开始
 
-5 分钟内启动你的第一个 AI 角色。**全程 WebUI 操作，不需要手动编辑任何文件。**
-
-## 前提条件
-
-- Python 3.12+
-- 一个 LLM API Key（如 DeepSeek、SiliconFlow 等）
-
-## 1. 安装
+## 1. 启动 WebUI
 
 ```bash
-pip install sirius-pulse
+python main.py webui
 ```
 
-## 2. 启动 WebUI
+访问 `http://127.0.0.1:8080`。也可以使用 `python main.py run` 同时启动活跃人格和 WebUI。
+
+## 2. 创建或选择人格
 
 ```bash
-sirius-pulse webui
+python main.py persona list
+python main.py persona create default
+python main.py persona activate default
 ```
 
-打开浏览器访问 `http://localhost:8080`，所有后续配置都在可视化面板中完成。
+WebUI 也提供创建、启动、停止和切换人格的页面。
 
-## 3. 配置 Provider（WebUI）
+## 3. 配置 Provider
 
-进入 **Provider** 页面，填入你的 API Key：
+在 WebUI 的 Provider 页面添加模型服务。常见字段：
 
-- 选择 Provider 类型（DeepSeek、SiliconFlow 等）
-- 填入 API Key 和 API 地址
-- 保存
+- `provider_type`：如 `openai_compatible`、`deepseek`、`siliconflow`、`aliyun_bailian`、`bigmodel`、`volcengine_ark`、`mimo`。
+- `api_key`：服务密钥。
+- `base_url`：OpenAI-compatible 服务地址或厂商地址。
+- `models`：可用模型列表。
+- `enabled`：是否启用。
 
-支持的 Provider：DeepSeek / SiliconFlow / 阿里云百炼 / 火山方舟 / 智谱 GLM / OpenAI 兼容
+## 4. 配置人格模型编排
 
-## 4. 创建人格（WebUI）
+在人格编排配置中选择 `unified_model` 或按任务配置 `task_models`、`task_temperatures`、`task_max_tokens`、`task_retries`。
 
-进入 **Dashboard** → 点击"创建人格"：
+## 5. 接入 QQ
 
-- 填入角色名称（如"小星"）
-- 系统自动生成默认配置目录
+NapCat 适配器示例：
 
-进入 **人格管理** 页面，选择刚创建的人格：
-
-- 填写角色设定：名字、别名、背景故事
-- 填写性格特质：核心性格、说话风格、回应习惯
-- 选择交流风格：健谈 / 正常 / 选择性回复
-
-## 5. 模型编排（WebUI）
-
-进入 **模型编排** 页面，选择模型：
-
-| 通用模型 | 作用 |
-|---------|------|
-| 分析模型 | 认知分析、记忆提取 |
-| 对话模型 | 回复生成、主动发言、被动技能、通知 |
-| 记忆维护模型 | 日记生成/合并、传记蒸馏/更新 |
-| 插件模型 | 插件生成/分析/渲染 |
-
-每项任务还可以独立覆盖模型、调整温度和最大 Token。
-
-## 6. 接入 QQ（WebUI）
-
-进入 **NapCat** 页面：
-
-1. 设置 NapCat 安装路径
-2. 填入 QQ 号和 ws_token
-3. 点击"安装/更新 NapCat"
-4. 点击"启动" → 扫码登录
-
-进入 **适配器** 页面，为目标人格添加 NapCat 适配器，填入 ws_url。可以设置群聊/私聊白名单。
-
-## 7. 启动人格
-
-回到 **Dashboard**，点击人格的"启动"按钮。
-
-也可以命令行操作：
-
-```bash
-# 启动所有已配置人格 + WebUI
-sirius-pulse run
-
-# 前台启动单个人格（调试用）
-sirius-pulse persona start my-bot
+```json
+{
+  "adapter_type": "onebot_v11_napcat",
+  "ws_url": "ws://127.0.0.1:3001",
+  "access_token": "",
+  "enabled": true,
+  "group_whitelist": []
+}
 ```
 
-## 下一步
+保存后重启人格或点击 WebUI 的引擎重载。
 
-- 阅读 [人格系统](./persona-system) 了解如何精细调校角色
-- 阅读 [引擎架构](./engine-architecture) 理解后台如何工作
-- 阅读 [扩展开发](/extensions/) 学习编写自定义技能和插件
+## 6. 查看运行状态
+
+- WebUI 仪表盘：人格状态、Token、日志和健康检查。
+- API：`GET /api/monitoring/health`、`GET /api/persona/status`。

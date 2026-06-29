@@ -1,25 +1,22 @@
-# GitHub 集成模块 (github/)
+# GitHub 集成模块
 
-## 模块概述
+## 位置
 
-GitHub 集成模块提供 GitHub 事件监控和 Webhook 处理功能，允许 AI 关注 GitHub 仓库的动态。
+`sirius_pulse/github/`
 
-## 核心文件
+## 职责
 
-| 文件 | 职责 |
-|------|------|
-| `client.py` | GitHub API 客户端 |
-| `events.py` | GitHub 事件定义 |
-| `event_bridge.py` | 事件桥接器 |
-| `webhook.py` | Webhook 处理 |
+GitHub 模块包含 API 客户端、事件抓取、Webhook 服务和事件桥接。
 
-## 功能特性
+## 关键协作
 
-1. **仓库监控**：定期检查仓库的最新提交、Issue、PR
-2. **Webhook 接收**：接收 GitHub Webhook 推送的事件
-3. **事件转换**：将 GitHub 事件转换为引擎可消费的格式
-4. **通知发送**：将 GitHub 动态发送到指定群组
+- 由 CLI、WebUI 或人格 worker 初始化。
+- 与 `core/` 的对话管线通过明确的数据模型协作。
+- 配置来源优先来自 `data/global_config.json` 和 `data/personas/<name>/`。
+- 运行时状态会被 WebUI API、日志和事件流观察。
 
-## 内置技能
+## 排查建议
 
-`github_monitor` 技能使用此模块实现 GitHub 仓库监控功能。
+1. 先确认相关配置文件是否存在且 JSON 合法。
+2. 再检查 WebUI API 返回值和日志。
+3. 最后定位对应模块的类和函数，避免跨层修改。
