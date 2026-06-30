@@ -94,7 +94,7 @@ GET /api/memory/{persona_name}/groups/{group_id}
 ```
 
 响应包含：
-- `entries`: 基础记忆条目列表（每个条目包含 `content`、`role`、`tags`、`conversation_chain` 等字段）
+- `entries`: 基础记忆条目列表（每个条目包含 `content`、`role`、`tags`、`conversation_chain`、`injected_tool_names` 等字段）
 - `heat`: 群聊热度
 - `diary_entries`: 相关日记
 
@@ -105,7 +105,7 @@ GET /api/memory/{persona_name}/users/{user_id}
 ```
 
 响应包含：
-- `entries`: 用户记忆条目列表（每个条目包含 `content`、`role`、`tags`、`conversation_chain` 等字段）
+- `entries`: 用户记忆条目列表（每个条目包含 `content`、`role`、`tags`、`conversation_chain`、`injected_tool_names` 等字段）
 
 ### 获取人物传记
 
@@ -153,6 +153,7 @@ GET /api/personas/{name}/conversations
       "content": "你好呀！今天有什么想聊的？",
       "group_id": "123",
       "system_prompt": "你是一个友善的助手。",
+      "injected_tool_names": ["example_plugin", "example_skill"],
       "conversation_chain": [
         {"role": "system", "content": "你是一个友善的助手。"},
         {"role": "user", "content": "你好"},
@@ -173,6 +174,7 @@ GET /api/personas/{name}/conversations
 - **用户消息**中的标签：`sticker`（动画表情，label 格式如 `动画表情 ×2`）、`image`（普通图片，label 格式如 `图片 ×3`）
 - **模型回复**中的标签：`sticker`（表情包，label 格式如 `表情包: 开心`）、`pin`（钉住消息）、`unpin`（取消钉住）
 
+`injected_tool_names` 字段（仅 `assistant` 角色消息拥有）记录了该条回复生成时注入的工具名称列表，如插件和技能的名称，用于调试和追溯。
 `conversation_chain` 字段（仅 `assistant` 角色消息拥有）记录了该条回复生成时使用的完整 LLM 调用消息链，格式为一个数组，每个元素包含 `role` 和 `content` 字段，用于调试和追溯。
 
 ## Plugin 管理

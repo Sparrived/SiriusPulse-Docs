@@ -181,6 +181,7 @@ class ChatResult:
     token_record: Any                # token 用量记录
     system_prompt: str               # 本次对话使用的完整 system prompt
     sticker_names: list[str]         # 识别的表情包名
+    injected_tool_names: list[str]   # 注入的工具名称列表
     has_skill_call: bool             # 是否包含 SKILL_CALL
     skill_calls: list[tuple[str, dict]]  # 提取的 SKILL_CALL 列表
 ```

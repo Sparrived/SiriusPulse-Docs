@@ -38,6 +38,7 @@ per-group deque:
 | `multimodal_inputs` | 多模态输入列表（如图片） |
 | `tags` | 内容标签（表情包、钉住等） |
 | `conversation_chain` | **完整 LLM 消息链**（详见下文） |
+| `injected_tool_names` | 生成回复时注入的工具名称列表（用于分析上下文） |
 
 `conversation_chain` 字段用于记录 AI 回复生成时所使用的完整消息列表，包含 `system` prompt 及后续 `user` / `assistant` 交替消息，便于对话历史页面还原 LLM 调用上下文。
 
@@ -360,13 +361,17 @@ AI 在回复中使用特殊语法来钉住或取消钉住消息：
 {
   "memory_depth": 5,
   "cross_group_memory": true,
-  "pinned_message_max_carry_count": 100
+  "pinned_message_max_carry_count": 100,
+  "reply_time_curve_enabled": false,
+  "reply_time_curve_points": []
 }
 ```
 
 - `memory_depth`: 每次加载的历史消息数
 - `cross_group_memory`: 是否启用跨群记忆
 - `pinned_message_max_carry_count`: 钉住消息的最大携带次数，超过后自动取消
+- `reply_time_curve_enabled`: 是否启用回复时间曲线调节（影响参与决策的分数缩放）
+- `reply_time_curve_points`: 自定义时间曲线点列表，格式为 `[ [小时, 系数], ... ]`，例如 `[[0, 0.8], [8, 1.2], [23, 0.9]]`
 
 ## 数据流示例
 

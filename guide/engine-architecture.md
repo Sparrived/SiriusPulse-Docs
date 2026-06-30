@@ -130,7 +130,7 @@ flowchart TB
 
 ### 策略引擎（ResponseStrategyEngine）
 
-根据阈值和意图选择策略：
+根据参与度评分（由 ParticipationPolicy 计算，含回复时间系数调整）、阈值和意图选择策略：
 - **IMMEDIATE**: 直接回复
 - **DELAYED**: 延迟回复（等待确认窗口）
 - **SILENT**: 不回复
@@ -210,7 +210,7 @@ Brain 是引擎的 LLM 调用层，支持：
 | 40 | `_hook_memory` | 记忆记录（basic + semantic），写入模型输出相关标签 |
 | 50 | `_hook_timestamp` | 回复时间戳 + 持久化 |
 
-> 回复生成的 `ChatResult` 对象包含 `system_prompt` 字段（存储本次对话使用的完整 system prompt）和 `reply_references` 字段（存储引用回复信息，由 `_hook_reply_reference` 填充），这些字段后续会被写入 basic_store 的 entry 中。
+> 回复生成的 `ChatResult` 对象包含 `system_prompt` 字段（存储本次对话使用的完整 system prompt）、`reply_references` 字段（存储引用回复信息，由 `_hook_reply_reference` 填充）和 `injected_tool_names` 字段（存储本次调用注入的工具名称列表，由 Brain 根据 tools 参数自动收集），这些字段后续会被写入 basic_store 的 entry 中。
 
 ## 后台任务
 
@@ -263,6 +263,7 @@ Brain 是引擎的 LLM 调用层，支持：
 - `system_prompt`: 本次 LLM 调用使用的完整 system prompt
 - `tags`: 模型输出相关标签（表情包名称、钉住/取消钉住操作）
 - `conversation_chain`: 完整的 LLM 消息链，包含 system prompt 和用户消息（user/assistant 交替），用于上下文回溯和 prompt 重建
+- `injected_tool_names`: 本次调用注入的工具名称列表，用于追踪工具使用情况
 
 > 注意：用户消息的 entry 包含多模态输入标签（图片、动画表情数量），而 AI 回复的 entry 包含模型输出相关标签（表情包名称、钉住/取消钉住操作）和完整的 LLM 消息链。两部分共同形成完整的对话 tagging。
 
