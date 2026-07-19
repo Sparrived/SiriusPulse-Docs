@@ -10,6 +10,7 @@
 |---|---|
 | `./data:/app/data` | 人格、Provider、认证、记忆、日志和运行状态的持久化数据。 |
 | `/root/.cache/huggingface:/home/sirius/.cache/huggingface` | Embedding 模型缓存，更新镜像时不重复下载。 |
+| `/run/sirius-container-admin.sock` | 可选的受限容器管理代理；未配置时绑定 `/dev/null`，不是 Docker Socket。 |
 | `8080` | WebUI。 |
 | `127.0.0.1:18900` | 容器内 Embedding HTTP 服务，仅供主进程使用。 |
 
@@ -21,6 +22,25 @@
 - 已安装 Git，服务器能够拉取项目仓库。
 - 运行目录为 `/root/SiriusPulse`，其中包含 `docker-compose.yml`、`Dockerfile` 和 `scripts/update-container.sh`。
 - 使用主机网络时，`8080` 与 `18900` 不能被其他非项目进程占用；NapCat 仍可通过宿主机地址访问。
+
+## 可选：受限容器管理
+
+`container_admin` 不挂载 `/var/run/docker.sock`。它只能连接宿主机的受限代理，代理逐项检查操作类型和容器名称白名单，再以固定参数调用 Docker。代理默认只允许查看状态、详情和日志，不能改变容器状态。`inspect` 会保留原始 `State` 排障内容，并额外采集容器资源和主机 CPU、内存、根磁盘、负载及运行时长，再将状态卡片立即发送到调用它的 QQ 群聊或私聊。镜像会在构建期安装 Playwright Chromium。
+
+先在宿主机安装配置和 systemd 服务。将示例中的容器名改成实际要授权给 Sirius 的容器，配置文件必须只由 root 写入：
+
+```bash
+cd /root/SiriusPulse
+sudo install -m 600 -o root -g root scripts/container-admin.json.example /etc/sirius-container-admin.json
+sudoedit /etc/sirius-container-admin.json
+sudo install -m 644 scripts/container-admin.service /etc/systemd/system/sirius-container-admin.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now sirius-container-admin
+test -S /run/sirius-container-admin.sock
+sudoedit /root/SiriusPulse/.env
+```
+
+在 `.env` 中加入 `SIRIUS_CONTAINER_ADMIN_SOCKET=/run/sirius-container-admin.sock` 后重新执行更新脚本。服务会把 Socket 的组设为 `10001`，与镜像内 `sirius` 用户一致；Compose 以只读方式把该 Socket 挂进容器。未设置该变量时，Compose 仅绑定 `/dev/null`，现有部署不会因这个可选能力失败。需要启停或重启时，才将配置中的 `allow_mutations` 改为 `true`；代理会在下次请求时重新读取配置。不要把 Docker Socket 挂载到 Sirius 容器。
 
 ## Hyper-V 磁盘扩容
 

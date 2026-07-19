@@ -4,8 +4,9 @@
 
 | 文件 | 功能 |
 |---|---|
-| `bash.py` | 在人格工作区内执行受命令白名单、管道、路径、超时和输出限制控制的 Bash。 |
-| `interaction.py` | 统一处理戳一戳和表情包。 |
+| `bash.py` | 在容器内执行标准 Bash 命令。 |
+| `container_admin.py` | 通过宿主机受限代理管理允许列表中的容器。 |
+| `interaction.py` | 统一处理戳一戳、表情包和指定消息撤回。 |
 | `file_upload.py` | 统一处理图片发送和文件上传。 |
 | `group_management.py` | 统一处理 QQ 群管理员操作。 |
 | `chat_with_developer.py` | 与开发者沟通。 |
@@ -15,12 +16,18 @@
 | `learn_term.py` | 学习术语并写入术语表。 |
 | `reminder.py` | 创建提醒。 |
 | `web_lookup.py` | Web 查询。 |
-| `user_profile.py` | 用户档案。 |
 | `qq_member_info.py` | 查询 QQ 群成员信息。 |
-| `recall_message.py` | 撤回最近的指定消息，保持独立。 |
 
-## Bash 权限
+## Bash
 
-`bash` 默认只允许只读命令，且工作目录和命令参数只能引用当前人格工作区内的相对路径。命令串联、重定向、变量/子命令替换、嵌套解释器、`find -exec` 和危险 Git 操作会被拒绝。
+`bash` 可在整个容器文件系统中执行，`cwd` 支持容器内任意存在的目录和绝对路径。它支持标准 Bash 语法，包括管道、重定向、here-document、变量和命令替换；所有调用者均可使用。工具保留工作目录存在性校验、命令长度、执行超时和输出长度限制。
 
-通过人格 Skill 配置接口调整 `bash` 的 `allowed_commands`、`max_timeout_seconds` 和 `max_output_chars`。写入命令需要显式开启 `allow_write_commands`；删除命令还需要单独开启 `allow_destructive_commands`。配置保存在 `{persona}/skill_data/bash.json`，每次调用都会重新读取。
+在 WebUI 的 `bash` 配置表单中调整 `max_timeout_seconds` 和 `max_output_chars`。配置保存在 `{persona}/skill_data/bash.json`，每次调用都会重新读取。
+
+## Container Admin
+
+`container_admin` 仅对 developer 开放，支持 `list`、`inspect`、`logs`、`start`、`stop` 和 `restart`。`inspect` 会保留原始容器 `State` 作为排障内容，同时查询容器 CPU、内存、网络 I/O、块 I/O、PID，以及宿主机 CPU、内存、根磁盘、负载与运行时长；Playwright 渲染状态卡片后通过 `file_upload` 立即发送到当前 QQ 群聊或私聊。卡片发送失败不会丢失排障结果。它连接 `/run/sirius-container-admin.sock`，不会获得 `/var/run/docker.sock`。宿主机代理从 root 所有的 `/etc/sirius-container-admin.json` 读取容器白名单，且默认拒绝状态变更；部署方法见 Docker 部署指南。
+
+## Developer Status
+
+在 WebUI 的 `developer_status` 配置表单中填写 MDS 公开状态令牌、服务基地址和请求超时。配置保存在 `{persona}/skill_data/developer_status.json`；环境变量 `MDS_PUBLIC_STATUS_TOKEN` 和 `MDS_API_BASE_URL` 仅作为未配置时的后备。
