@@ -25,6 +25,7 @@ export default defineConfig({
           items: [
             { text: '快速开始', link: '/guide/quickstart' },
             { text: '安装', link: '/guide/installation' },
+            { text: 'Docker 部署', link: '/guide/docker-deployment' },
             { text: '配置', link: '/guide/configuration' },
           ],
         },

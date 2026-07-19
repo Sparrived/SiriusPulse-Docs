@@ -5,12 +5,13 @@ Sirius Pulse 的使用路径建议从安装、快速启动、人格配置开始�
 ## 推荐阅读顺序
 
 1. [安装](./installation)：准备 Python、依赖和运行目录。
-2. [快速开始](./quickstart)：启动 WebUI，创建人格并配置 Provider。
-3. [配置](./configuration)：理解全局配置、人格配置、模型编排和适配器配置。
-4. [人格系统](./persona-system)：了解人格目录、子进程和生命周期。
-5. [系统架构全景](./architecture-overview)：把 CLI、WebUI、人格进程、平台和模型串起来。
-6. [记忆系统](./memory-system)：理解长期记忆如何进入 Prompt。
-7. [NapCat / OneBot](./platform-napcat)：接入 QQ。
+2. [Docker 部署](./docker-deployment)：部署、迁移和更新服务器上的单容器服务。
+3. [快速开始](./quickstart)：启动 WebUI，创建人格并配置 Provider。
+4. [配置](./configuration)：理解全局配置、人格配置、模型编排和适配器配置。
+5. [人格系统](./persona-system)：了解人格目录、子进程和生命周期。
+6. [系统架构全景](./architecture-overview)：把 CLI、WebUI、人格进程、平台和模型串起来。
+7. [记忆系统](./memory-system)：理解长期记忆如何进入 Prompt。
+8. [NapCat / OneBot](./platform-napcat)：接入 QQ。
 
 ## 运行形态
 
