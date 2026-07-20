@@ -25,9 +25,9 @@
 
 ## 可选：受限容器管理
 
-`container_admin` 不挂载 `/var/run/docker.sock`。它只能连接宿主机的受限代理，代理逐项检查操作类型和容器名称白名单，再以固定参数调用 Docker。代理默认只允许查看状态、详情和日志，不能改变容器状态。`inspect` 会保留原始 `State` 排障内容，并额外采集容器资源和主机 CPU、内存、根磁盘、负载及运行时长，再将状态卡片立即发送到调用它的 QQ 群聊或私聊。镜像会在构建期安装 Playwright Chromium。
+`container_admin` 不挂载 `/var/run/docker.sock`。它只能连接宿主机的受限代理，代理以固定参数调用 Docker，并直接管理宿主机的全部容器，包括已停止容器。代理默认允许查看、启停和重启容器；在配置中设置 `allow_mutations: false` 可关闭状态变更。`inspect` 会保留原始 `State` 排障内容，并额外采集容器资源和主机 CPU、内存、根磁盘、负载及运行时长，再将状态卡片立即发送到调用它的 QQ 群聊或私聊。镜像会在构建期安装 Playwright Chromium。
 
-先在宿主机安装配置和 systemd 服务。将示例中的容器名改成实际要授权给 Sirius 的容器，配置文件必须只由 root 写入：
+先在宿主机安装配置和 systemd 服务。配置文件必须只由 root 写入：
 
 ```bash
 cd /root/SiriusPulse
@@ -40,7 +40,7 @@ test -S /run/sirius-container-admin.sock
 sudoedit /root/SiriusPulse/.env
 ```
 
-在 `.env` 中加入 `SIRIUS_CONTAINER_ADMIN_SOCKET=/run/sirius-container-admin.sock` 后重新执行更新脚本。服务会把 Socket 的组设为 `10001`，与镜像内 `sirius` 用户一致；Compose 以只读方式把该 Socket 挂进容器。未设置该变量时，Compose 仅绑定 `/dev/null`，现有部署不会因这个可选能力失败。需要启停或重启时，才将配置中的 `allow_mutations` 改为 `true`；代理会在下次请求时重新读取配置。不要把 Docker Socket 挂载到 Sirius 容器。
+在 `.env` 中加入 `SIRIUS_CONTAINER_ADMIN_SOCKET=/run/sirius-container-admin.sock` 后重新执行更新脚本。服务会把 Socket 的组设为 `10001`，与镜像内 `sirius` 用户一致；Compose 以只读方式把该 Socket 挂进容器。未设置该变量时，Compose 仅绑定 `/dev/null`，现有部署不会因这个可选能力失败。代理默认允许状态变更；需要临时关闭启停重启时，将配置中的 `allow_mutations` 改为 `false`，下次请求即生效。不要把 Docker Socket 挂载到 Sirius 容器。
 
 ## Hyper-V 磁盘扩容
 
