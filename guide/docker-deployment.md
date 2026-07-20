@@ -14,7 +14,7 @@
 | `8080` | WebUI。 |
 | `127.0.0.1:18900` | 容器内 Embedding HTTP 服务，仅供主进程使用。 |
 
-不要执行 `docker compose down -v`，它会删除 Docker 卷；日常更新使用下面的脚本即可。
+不要执行 `docker compose down -v`，它会删除 Docker 卷；日常更新只使用下面的一条命令。
 
 ## 前置条件
 
@@ -78,7 +78,7 @@ mv data "data.pre-docker-$(date +%Y%m%dT%H%M%S)"
 mkdir data
 docker cp sirius-pulse-v2-test:/app/data/. ./data/
 chown -R 10001:10001 data
-docker compose up -d --build --force-recreate --remove-orphans
+bash scripts/update-container.sh
 ```
 
 仅在旧容器确实存在且其数据比宿主机目录更新时执行迁移。迁移完成后保留 `data.pre-docker-*`，确认服务稳定和数据完整后再按自己的备份策略处理。
@@ -88,11 +88,12 @@ docker compose up -d --build --force-recreate --remove-orphans
 服务器上只需执行一条命令：
 
 ```bash
-cd /root/SiriusPulse
-bash scripts/update-container.sh
+bash /root/SiriusPulse/scripts/update-container.sh
 ```
 
-脚本会快进拉取 `master`、更新 Git 子模块、构建镜像、强制重建主容器、清理已从 Compose 移除的孤立容器，并等待 WebUI 与内部 Embedding 健康。`data` 和 Hugging Face 模型缓存不会被删除。
+脚本会快进拉取 `master`、更新 Git 子模块、验证 Compose 配置、构建镜像、强制重建主容器、清理已从 Compose 移除的孤立容器，并等待 WebUI 与内部 Embedding 健康。它不会执行 `down -v`，也不会删除 `data/`、认证信息、记忆、Provider 配置或 Hugging Face 模型缓存。
+
+普通源码改动会复用按 `pyproject.toml` 与 `uv.lock` 缓存的 Python 依赖和 Chromium 构建层，不会重新下载浏览器。只有修改锁文件或 Dockerfile 时才会重新构建该层。若发现旧 `sirius-pulse-v2-test` 容器但没有 `data/`，脚本会停止并要求先执行首次迁移，避免以空目录启动并覆盖可用数据。
 
 ## 健康检查
 
