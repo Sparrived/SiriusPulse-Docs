@@ -6,7 +6,6 @@
 |---|---|
 | `bash.py` | 在容器内执行标准 Bash 命令。 |
 | `container_admin.py` | 通过宿主机受限代理管理宿主机的全部容器。 |
-| `interaction.py` | 统一处理戳一戳、表情包和指定消息撤回。 |
 | `group_file_exec.py` | 统一处理图片发送、文件上传，以及群文件列表读取和下载。 |
 | `group_management.py` | 统一处理 QQ 群管理员操作。 |
 | `chat_with_developer.py` | 与开发者沟通。 |
