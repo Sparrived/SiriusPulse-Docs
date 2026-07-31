@@ -17,7 +17,7 @@ Skill 是模型可自主调用的工具系统。它不同于 Plugin：Skill 服�
 
 Skill 可以通过 `SKILL_META["config"]` 声明不暴露给模型的、按人格保存的配置参数。配置通过人格 Skill API 保存到 `skill_data/{skill_name}.json`，运行时由 Skill 自己从注入的 `data_store` 读取。
 
-内置 `bash` 是受控命令工具：默认只开放只读命令，限制在人格工作区内，拒绝命令串联、重定向、嵌套解释器和危险路径。文件发送使用 `file_upload`，因为 Bash 不直接拥有聊天平台桥接能力。
+内置 `bash` 是受控命令工具：默认只开放只读命令，限制在人格工作区内，拒绝命令串联、重定向、嵌套解释器和危险路径。文件发送使用 `group_file_exec`，因为 Bash 不直接拥有聊天平台桥接能力。
 
 ## API
 

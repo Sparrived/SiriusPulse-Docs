@@ -7,7 +7,7 @@
 | `bash.py` | 在容器内执行标准 Bash 命令。 |
 | `container_admin.py` | 通过宿主机受限代理管理宿主机的全部容器。 |
 | `interaction.py` | 统一处理戳一戳、表情包和指定消息撤回。 |
-| `file_upload.py` | 统一处理图片发送和文件上传。 |
+| `group_file_exec.py` | 统一处理图片发送、文件上传，以及群文件列表读取和下载。 |
 | `group_management.py` | 统一处理 QQ 群管理员操作。 |
 | `chat_with_developer.py` | 与开发者沟通。 |
 | `desktop_screenshot.py` | 获取桌面截图。 |
@@ -26,7 +26,7 @@
 
 ## Container Admin
 
-`container_admin` 仅对 developer 开放，支持 `list`、`inspect`、`logs`、`start`、`stop` 和 `restart`。`list` 直接返回宿主机的全部容器，包括已停止容器。`inspect` 会保留原始容器 `State` 作为排障内容，同时查询容器 CPU、内存、网络 I/O、块 I/O、PID，以及宿主机 CPU、内存、根磁盘、负载与运行时长；Playwright 渲染状态卡片后通过 `file_upload` 立即发送到当前 QQ 群聊或私聊。卡片发送失败不会丢失排障结果。它连接 `/run/sirius-container-admin.sock`，不会获得 `/var/run/docker.sock`。宿主机代理仍以固定 Docker 参数执行操作，默认允许状态变更；设置 `allow_mutations: false` 可关闭启停重启；部署方法见 Docker 部署指南。
+`container_admin` 仅对 developer 开放，支持 `list`、`inspect`、`logs`、`start`、`stop` 和 `restart`。`list` 直接返回宿主机的全部容器，包括已停止容器。`inspect` 会保留原始容器 `State` 作为排障内容，同时查询容器 CPU、内存、网络 I/O、块 I/O、PID，以及宿主机 CPU、内存、根磁盘、负载与运行时长；Playwright 渲染状态卡片后通过 `group_file_exec` 立即发送到当前 QQ 群聊或私聊。卡片发送失败不会丢失排障结果。它连接 `/run/sirius-container-admin.sock`，不会获得 `/var/run/docker.sock`。宿主机代理仍以固定 Docker 参数执行操作，默认允许状态变更；设置 `allow_mutations: false` 可关闭启停重启；部署方法见 Docker 部署指南。
 
 ## Developer Status
 
