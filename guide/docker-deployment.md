@@ -10,7 +10,7 @@
 |---|---|
 | `./data:/app/data` | 人格、Provider、认证、记忆、日志和运行状态的持久化数据。 |
 | `/root/.cache/huggingface:/home/sirius/.cache/huggingface` | Embedding 模型缓存，更新镜像时不重复下载。 |
-| `/run/sirius-container-admin.sock` | 可选的受限容器管理代理；未配置时绑定 `/dev/null`，不是 Docker Socket。 |
+| `/run/sirius-container-admin.sock` | 可选的 Docker 管理代理；未配置时绑定 `/dev/null`，不是 Docker Socket。 |
 | `8080` | WebUI。 |
 | `127.0.0.1:18900` | 容器内 Embedding HTTP 服务，仅供主进程使用。 |
 
@@ -23,9 +23,9 @@
 - 运行目录为 `/root/SiriusPulse`，其中包含 `docker-compose.yml`、`Dockerfile` 和 `scripts/update-container.sh`。
 - 使用主机网络时，`8080` 与 `18900` 不能被其他非项目进程占用；NapCat 仍可通过宿主机地址访问。
 
-## 可选：受限容器管理
+## 可选：Docker 管理代理
 
-`container_admin` 不挂载 `/var/run/docker.sock`。它只能连接宿主机的受限代理，代理以固定参数调用 Docker，并直接管理宿主机的全部容器，包括已停止容器。代理默认允许查看、启停和重启容器；在配置中设置 `allow_mutations: false` 可关闭状态变更。`inspect` 会保留原始 `State` 排障内容，并额外采集容器资源和主机 CPU、内存、根磁盘、负载及运行时长，再将状态卡片立即发送到调用它的 QQ 群聊或私聊。镜像会在构建期安装 Playwright Chromium。
+Sirius 容器中的 `bash` 通过 `/run/sirius-container-admin.sock` 管理其他容器，不挂载 `/var/run/docker.sock`。代理接受常规 Docker 命令和完整 `docker exec`，默认允许状态变更；在配置中设置 `allow_mutations: false` 可关闭变更操作。只拒绝不可逆删除/清理、明显的跨容器毁灭性命令和宿主机逃逸参数，便于在其他容器内正常执行 shell、读写文件及服务管理。
 
 先在宿主机安装配置和 systemd 服务。配置文件必须只由 root 写入：
 
@@ -40,7 +40,7 @@ test -S /run/sirius-container-admin.sock
 sudoedit /root/SiriusPulse/.env
 ```
 
-在 `.env` 中加入 `SIRIUS_CONTAINER_ADMIN_SOCKET=/run/sirius-container-admin.sock` 后重新执行更新脚本。服务会把 Socket 的组设为 `10001`，与镜像内 `sirius` 用户一致；Compose 以只读方式把该 Socket 挂进容器。未设置该变量时，Compose 仅绑定 `/dev/null`，现有部署不会因这个可选能力失败。代理默认允许状态变更；需要临时关闭启停重启时，将配置中的 `allow_mutations` 改为 `false`，下次请求即生效。不要把 Docker Socket 挂载到 Sirius 容器。
+在 `.env` 中加入 `SIRIUS_CONTAINER_ADMIN_SOCKET=/run/sirius-container-admin.sock` 后重新执行更新脚本。服务会把 Socket 的组设为 `10001`，与镜像内 `sirius` 用户一致；Compose 以只读方式把该 Socket 挂进容器。未设置该变量时，Compose 仅绑定 `/dev/null`，现有部署不会因这个可选能力失败。代理默认允许变更；需要临时关闭所有 Docker 变更操作时，将配置中的 `allow_mutations` 改为 `false`，下次请求即生效。不要把 Docker Socket 挂载到 Sirius 容器。
 
 ## Hyper-V 磁盘扩容
 

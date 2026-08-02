@@ -4,8 +4,7 @@
 
 | 文件 | 功能 |
 |---|---|
-| `bash.py` | 在容器内执行标准 Bash 命令。 |
-| `container_admin.py` | 通过宿主机受限代理管理宿主机的全部容器。 |
+| `bash.py` | 在当前容器内执行标准 Bash 命令，并通过代理管理其他容器。 |
 | `group_file_exec.py` | 统一处理图片发送、文件上传，以及群文件列表读取和下载。 |
 | `group_management.py` | 统一处理 QQ 群管理员操作。 |
 | `chat_with_developer.py` | 与开发者沟通。 |
@@ -19,13 +18,13 @@
 
 ## Bash
 
-`bash` 可在整个容器文件系统中执行，`cwd` 支持容器内任意存在的目录和绝对路径。它支持标准 Bash 语法，包括管道、重定向、here-document、变量和命令替换；所有调用者均可使用。工具保留工作目录存在性校验、命令长度、执行超时和输出长度限制。
+`bash` 是当前 Sirius 容器内的真实 Bash：`cwd` 支持容器内任意存在的目录和绝对路径，命令按当前进程身份执行，不再有命令白名单或工作区边界。它支持标准 Bash 语法，包括管道、重定向、here-document、变量和命令替换；所有调用者均可使用。工作目录、命令长度、执行超时和输出长度限制只用于保护服务稳定性，不改变容器内权限。
 
 在 WebUI 的 `bash` 配置表单中调整 `max_timeout_seconds` 和 `max_output_chars`。配置保存在 `{persona}/skill_data/bash.json`，每次调用都会重新读取。
 
-## Container Admin
+## Docker Bridge
 
-`container_admin` 仅对 developer 开放，支持 `list`、`inspect`、`logs`、`start`、`stop` 和 `restart`。`list` 直接返回宿主机的全部容器，包括已停止容器。`inspect` 会保留原始容器 `State` 作为排障内容，同时查询容器 CPU、内存、网络 I/O、块 I/O、PID，以及宿主机 CPU、内存、根磁盘、负载与运行时长；Playwright 渲染状态卡片后通过 `group_file_exec` 立即发送到当前 QQ 群聊或私聊。卡片发送失败不会丢失排障结果。它连接 `/run/sirius-container-admin.sock`，不会获得 `/var/run/docker.sock`。宿主机代理仍以固定 Docker 参数执行操作，默认允许状态变更；设置 `allow_mutations: false` 可关闭启停重启；部署方法见 Docker 部署指南。
+`bash` 中的 `docker` 和 `docker-compose` 仍连接 `/run/sirius-container-admin.sock`，不会获得 `/var/run/docker.sock`。代理接受常规 Docker 命令和完整 `docker exec`，所以可以在其他容器内使用其正常 shell、读写文件和服务管理能力。只拒绝不可逆的容器/镜像/卷/网络/系统删除或清理、明显的跨容器毁灭性命令，以及 `docker run/create` 的宿主机逃逸参数；`allow_mutations: false` 仍可关闭变更操作。代理默认允许状态变更，部署方法见 Docker 部署指南。
 
 ## Developer Status
 
