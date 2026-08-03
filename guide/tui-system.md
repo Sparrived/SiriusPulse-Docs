@@ -11,7 +11,6 @@
 | `webui --foreground` | 前台运行 WebUI。 |
 | `webui --status` | 查看 WebUI 后台状态。 |
 | `webui --stop` | 停止后台 WebUI。 |
-| `assistant --butler ws://...` | 以助手模式连接管家端。 |
 | `persona list` | 列出人格。 |
 | `persona create <name>` | 创建人格。 |
 | `persona activate <name>` | 切换活跃人格。 |

@@ -7,9 +7,8 @@
 | `bash.py` | 在当前容器内执行标准 Bash 命令，并通过代理管理其他容器。 |
 | `group_file_exec.py` | 统一处理图片发送、文件上传，以及群文件列表读取和下载。 |
 | `group_management.py` | 统一处理 QQ 群管理员操作。 |
-| `chat_with_developer.py` | 与开发者沟通。 |
+| `interaction_with_master.py` | 与主人沟通并查询主人的公开设备状态。 |
 | `desktop_screenshot.py` | 获取桌面截图。 |
-| `micro_device_status.py` | 获取 developer 的 MicroDeviceStatus 公开设备状态。 |
 | `github_monitor.py` | 监控 GitHub 仓库事件。 |
 | `learn_term.py` | 学习术语并写入术语表。 |
 | `reminder.py` | 创建提醒。 |
@@ -47,4 +46,4 @@ printf '%s\n' jq >> /app/data/runtime-packages/apt.txt
 
 ## Developer Status
 
-在 WebUI 的 `developer_status` 配置表单中填写 MDS 公开状态令牌、服务基地址和请求超时。配置保存在 `{persona}/skill_data/developer_status.json`；环境变量 `MDS_PUBLIC_STATUS_TOKEN` 和 `MDS_API_BASE_URL` 仅作为未配置时的后备。
+在 WebUI 的 `interaction_with_master` 配置表单中填写 MDS 公开状态令牌、服务基地址和请求超时。配置保存在 `{persona}/skill_data/interaction_with_master.json`；环境变量 `MDS_PUBLIC_STATUS_TOKEN` 和 `MDS_API_BASE_URL` 仅作为未配置时的后备。
