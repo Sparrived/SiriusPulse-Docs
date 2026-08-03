@@ -3,7 +3,7 @@ layout: home
 hero:
   name: Sirius Pulse
   text: 异步角色扮演聊天框架
-  tagline: 本地优先 · 多人格 · 多模型 · QQ / OneBot 接入 · 可扩展技能与插件
+  tagline: 本地优先 · 多人格 · 多模型 · QQ / OneBot 接入 · 可扩展工具与插件
   image:
     src: /yuebai.png
     alt: Yuebai
@@ -23,8 +23,8 @@ features:
     details: 基础记忆、语义画像、日记、记忆单元、术语表、用户统一档案和认知事件共同构成长期上下文。
   - title: QQ / OneBot
     details: 内置 NapCat OneBot v11 WebSocket 适配器，支持群聊、私聊、图片、@、禁言、戳一戳、撤回和群名片等操作。
-  - title: Skills 与 Plugins
-    details: Skills 面向模型自主调用工具；Plugins 面向用户显式指令与事件调度，二者独立注册、鉴权和执行。
+  - title: Tools 与 Plugins
+    details: Tools 面向模型自主调用工具；Plugins 面向用户显式指令与事件调度，二者独立注册、鉴权和执行。
   - title: WebUI 运维
     details: aiohttp REST API、静态管理面板、WebSocket 事件流、日志、Token、健康状态、记忆可视化和执行历史。
 ---

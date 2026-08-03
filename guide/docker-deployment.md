@@ -119,7 +119,7 @@ curl -fsS http://127.0.0.1:18900/health
 docker logs --tail 100 sirius-pulse-v2-test
 ```
 
-日志应包含 Embedding 服务就绪、人格已就绪和 `SKILL runtime 已挂载`。确认数据挂载时可检查：
+日志应包含 Embedding 服务就绪、人格已就绪和 `TOOL runtime 已挂载`。确认数据挂载时可检查：
 
 ```bash
 docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' sirius-pulse-v2-test

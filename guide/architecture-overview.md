@@ -1,6 +1,6 @@
 # 系统架构全景
 
-Sirius Pulse 由 CLI、WebUI、人格子进程、平台适配器、对话引擎、Provider、记忆、Skills 和 Plugins 组成。
+Sirius Pulse 由 CLI、WebUI、人格子进程、平台适配器、对话引擎、Provider、记忆、Tools 和 Plugins 组成。
 
 ```mermaid
 flowchart TD
@@ -16,7 +16,7 @@ flowchart TD
   Pipeline --> Brain["Brain / LLM 调用"]
   Brain --> Providers["Provider 路由"]
   Pipeline --> Memory["记忆系统"]
-  Pipeline --> Skills["Skills 工具调用"]
+  Pipeline --> Tools["Tools 工具调用"]
   Pipeline --> Plugins["Plugins 用户指令"]
   WebUI --> API["REST API / WebSocket 事件"]
 ```
@@ -36,6 +36,6 @@ flowchart TD
 | `sirius_pulse/platforms/` | 具体平台适配器，目前包含 NapCat OneBot v11。 |
 | `sirius_pulse/adapters/` | 平台无关消息模型和基础适配器抽象。 |
 | `sirius_pulse/memory/` | 基础记忆、语义画像、日记、记忆单元、术语和用户档案。 |
-| `sirius_pulse/skills/` | 模型可调用工具，支持内置与外部 Skill。 |
+| `sirius_pulse/tools/` | 模型可调用工具，支持内置与外部 Tool。 |
 | `sirius_pulse/plugins/` | 用户显式触发的聊天指令、事件和调度。 |
 | `sirius_pulse/webui/` | aiohttp API、静态前端、WebSocket 事件和管理逻辑。 |

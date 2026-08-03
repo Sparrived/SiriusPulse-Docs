@@ -25,5 +25,5 @@ Sirius Pulse 的使用路径建议从安装、快速启动、人格配置开始�
 - `data/global_config.json`：全局设置与当前活跃人格。
 - `data/personas/<name>/`：人格配置、记忆、运行状态和日志相关文件。
 - `data/providers/`：Provider 配置与模型列表缓存。
-- `skills/`：用户安装或开发的外部 Skill。
+- `tools/`：用户安装或开发的外部 Tool。
 - `plugins/`：用户安装或开发的外部 Plugin。

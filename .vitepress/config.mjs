@@ -47,12 +47,12 @@ export default defineConfig({
       ],
       '/extensions/': [
         {
-          text: '技能系统 (Skills)',
+          text: '工具系统 (Tools)',
           items: [
-            { text: '技能系统总览', link: '/extensions/skill-overview' },
-            { text: '编写自定义技能', link: '/extensions/skill-authoring' },
-            { text: '内置技能参考', link: '/extensions/skill-builtin' },
-            { text: '被动技能开发', link: '/extensions/skill-passive' },
+            { text: '工具系统总览', link: '/extensions/tool-overview' },
+            { text: '编写自定义工具', link: '/extensions/tool-authoring' },
+            { text: '内置工具参考', link: '/extensions/tool-builtin' },
+            { text: '被动工具开发', link: '/extensions/tool-passive' },
           ],
         },
         {
@@ -79,7 +79,7 @@ export default defineConfig({
           items: [
             { text: 'Python API', link: '/reference/python-api' },
             { text: 'WebUI API', link: '/reference/webui-api' },
-            { text: 'Skills API', link: '/reference/skills-api' },
+            { text: 'Tools API', link: '/reference/tools-api' },
             { text: 'Plugins API', link: '/reference/plugins-api' },
             { text: 'AI API 参考', link: '/reference/ai-api' },
             { text: 'Brain API', link: '/reference/brain-api' },

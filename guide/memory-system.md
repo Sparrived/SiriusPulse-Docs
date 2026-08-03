@@ -11,7 +11,7 @@ Sirius Pulse 的记忆系统是一组面向不同粒度的上下文组件。
 | 日记 | `memory/diary/` | 对会话进行聚类、总结、索引和检索。 |
 | 记忆单元 | `memory/units/` | 更结构化的长期记忆片段生成、索引和检索。 |
 | 用户档案 | `memory/profile/` | 面向用户的人格化档案条目。 |
-| 术语表 | `memory/glossary/` | 通过 Skill 学习和渲染专有术语。 |
+| 术语表 | `memory/glossary/` | 通过 Tool 学习和渲染专有术语。 |
 | 统一用户 | `memory/user/` | 跨平台用户身份与关系锚点。 |
 
 ## 数据进入 Prompt

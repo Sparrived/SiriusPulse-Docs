@@ -5,6 +5,6 @@
 - 引擎：`EmotionalGroupChatEngine`、`Brain`、`ChatRequest`、`ChatResult`、`Pipeline`、`PromptFactory`。
 - 配置：`OrchestrationPolicy`、`SessionConfig`、`WorkspaceConfig`、`ConfigManager`。
 - Provider：`LLMProvider`、`AsyncLLMProvider`、`GenerationRequest`、`GenerationResult`、`ProviderConfig`、`ProviderRegistry`。
-- Skill：`SkillDefinition`、`SkillResult`、`SkillRegistry`、`SkillExecutor`。
+- Tool：`ToolDefinition`、`ToolResult`、`ToolRegistry`、`ToolExecutor`。
 - Plugin：`PluginBase`、`command`、`PluginResponse`、`CommandAST`。
 - 消息：`Message`、`Transcript`、`ReplyRuntimeState`、`MessageGroup`、`TextSegment`、`ImageSegment`。

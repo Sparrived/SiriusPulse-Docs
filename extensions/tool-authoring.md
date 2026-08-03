@@ -1,11 +1,11 @@
-# 编写自定义 Skill
+# 编写自定义 Tool
 
-外部 Skill 建议放在仓库根目录的 `skills/` 下。
+外部 Tool 建议放在仓库根目录的 `tools/` 下。
 
 ```python
-from sirius_pulse.skills.models import SkillResult
+from sirius_pulse.tools.models import ToolResult
 
-SKILL_META = {
+TOOL_META = {
     "name": "echo_text",
     "description": "原样返回一段文本。",
     "parameters": [
@@ -14,7 +14,7 @@ SKILL_META = {
 }
 
 async def run(text: str, **kwargs):
-    return SkillResult.ok(data={"text": text}, text=f"收到：{text}")
+    return ToolResult.ok(data={"text": text}, text=f"收到：{text}")
 ```
 
 元数据写给模型看，应说明何时使用、参数边界和权限限制。

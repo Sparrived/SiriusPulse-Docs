@@ -1,6 +1,6 @@
-# Skill 编写参考
+# 内置 Tool 参考
 
-该页面记录与 Skill 编写参考 相关的参考信息。当前实现已并入 WebUI、记忆和扩展 API。
+该页面记录与 内置 Tool 参考 相关的参考信息。当前实现已并入 WebUI、记忆和扩展 API。
 
 - WebUI 路由总览：[WebUI API](./webui-api)
 - 记忆系统：[记忆系统](../guide/memory-system)

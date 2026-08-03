@@ -13,6 +13,6 @@
 - [WebUI API](./webui-api)
 - [Brain API](./brain-api)
 - [AI API](./ai-api)
-- [Skills API](./skills-api)
+- [Tools API](./tools-api)
 - [Plugins API](./plugins-api)
 - [开发参考](./development)
