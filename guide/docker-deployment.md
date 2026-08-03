@@ -27,6 +27,18 @@
 
 Sirius 容器中的 `bash` 通过 `/run/sirius-container-admin.sock` 管理其他容器，不挂载 `/var/run/docker.sock`。代理接受常规 Docker 命令和完整 `docker exec`，默认允许状态变更；在配置中设置 `allow_mutations: false` 可关闭变更操作。只拒绝不可逆删除/清理、明显的跨容器毁灭性命令和宿主机逃逸参数，便于在其他容器内正常执行 shell、读写文件及服务管理。
 
+运行时安装的用户态依赖保存在 `./data/personas/<人格>/runtime/`。Bash 会自动注入 `$PIP_TARGET`、`$NPM_CONFIG_PREFIX`、`$SIRIUS_RUNTIME_BIN` 及对应缓存目录；Python 包、npm 全局包和用户态二进制可在容器重建后继续使用。
+
+系统包使用全局清单持久化：当前镜像是 Debian 系列，在 `./data/runtime-packages/apt.txt` 中一行写一个包名；CentOS/RHEL 容器使用 `yum.txt`。运行中的容器可先通过受控 root exec 安装，再记录清单：
+
+```bash
+docker exec --user root sirius-pulse-v2-test apt-get update
+docker exec --user root sirius-pulse-v2-test apt-get install -y jq
+printf '%s\n' jq >> /root/SiriusPulse/data/runtime-packages/apt.txt
+```
+
+之后 `scripts/update-container.sh` 会在新容器通过健康检查后自动检测 `apt-get` 或 `yum` 并恢复对应清单。宿主机是 CentOS 不影响容器内包管理器；清单中的每一行只能是包名或整行 `#` 注释。
+
 先在宿主机安装配置和 systemd 服务。配置文件必须只由 root 写入：
 
 ```bash
