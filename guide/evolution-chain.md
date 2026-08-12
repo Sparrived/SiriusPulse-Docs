@@ -8,7 +8,7 @@
 - 日记：`/api/persona/diary`。
 - 认知事件：`/api/persona/cognition` 与 `/api/persona/cognition/analysis`。
 - 记忆可视化：`/api/persona/memory-viz`。
-- 用户档案和术语表：`/api/persona/profile/*`、`/api/persona/glossary`。
+- 用户档案：`/api/persona/profile/*`。
 
 ## 注意事项
 

@@ -10,7 +10,6 @@
 | `interaction_with_master.py` | 与主人沟通并查询主人的公开设备状态。 |
 | `desktop_screenshot.py` | 获取桌面截图。 |
 | `github_monitor.py` | 监控 GitHub 仓库事件。 |
-| `learn_term.py` | 学习术语并写入术语表。 |
 | `reminder.py` | 创建提醒。 |
 | `web_lookup.py` | Web 查询。 |
 | `qq_member_info.py` | 查询 QQ 群成员信息。 |

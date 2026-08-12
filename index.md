@@ -20,7 +20,7 @@ features:
   - title: 多模型编排
     details: 支持统一模型与按任务分配模型，Provider 可接入 OpenAI-compatible、DeepSeek、SiliconFlow、百炼、智谱、火山等。
   - title: 记忆与认知
-    details: 基础记忆、语义画像、日记、记忆单元、术语表、用户统一档案和认知事件共同构成长期上下文。
+    details: 基础记忆、语义画像、日记、记忆单元、用户统一档案和认知事件共同构成长期上下文。
   - title: QQ / OneBot
     details: 内置 NapCat OneBot v11 WebSocket 适配器，支持群聊、私聊、图片、@、禁言、戳一戳、撤回和群名片等操作。
   - title: Tools 与 Plugins

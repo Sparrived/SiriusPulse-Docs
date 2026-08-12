@@ -16,7 +16,7 @@ WebUI API 路由集中定义在 `sirius_pulse/webui/routes.py`。
 
 ## 记忆与观测
 
-`/api/persona/tokens`、`/api/persona/cognition`、`/api/persona/cognition/analysis`、`/api/persona/diary`、`/api/persona/vector-store-status`、`/api/persona/vector-store/rebuild`、`/api/persona/glossary`、`/api/persona/profile/*`、`/api/persona/memory-viz`、`/api/persona/conversations`。
+`/api/persona/tokens`、`/api/persona/cognition`、`/api/persona/cognition/analysis`、`/api/persona/diary`、`/api/persona/vector-store-status`、`/api/persona/vector-store/rebuild`、`/api/persona/profile/*`、`/api/persona/memory-viz`、`/api/persona/conversations`。
 
 ## WebSocket
 
