@@ -22,7 +22,7 @@ WebUI 也提供创建、启动、停止和切换人格的页面。
 
 在 WebUI 的 Provider 页面添加模型服务。常见字段：
 
-- `provider_type`：如 `openai_compatible`、`deepseek`、`siliconflow`、`aliyun_bailian`、`bigmodel`、`volcengine_ark`、`mimo`。
+- `provider_type`：如 `openai_compatible`、`deepseek`、`siliconflow`、`aliyun_bailian`、`bigmodel`、`volcengine_ark`、`mimo`、`opencode`、`opencode_go`。
 - `api_key`：服务密钥。
 - `base_url`：OpenAI-compatible 服务地址或厂商地址。
 - `models`：可用模型列表。
