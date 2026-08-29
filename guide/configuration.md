@@ -39,7 +39,9 @@ Sirius Pulse 的配置分为全局配置、Provider 配置、人格配置、模�
 
 ## Provider 配置
 
-`ProviderConfig` 字段：`provider_type`、`api_key`、`base_url`、`healthcheck_model`、`enabled`、`models`、`models_url`。
+`ProviderConfig` 字段：`name`、`provider_type`、`api_key`、`base_url`、`healthcheck_model`、`enabled`、`models`、`models_url`。
+
+其中 `name` 是全局唯一且可修改的 Provider 识别名称，模型配置通过 `name/model` 路由；相同 API 端点和平台类型的不同 Key 可通过不同名称并存。旧配置会在首次加载时自动补齐名称，冲突名称自动追加数字后缀。
 
 相关 API：`GET /api/providers`、`POST /api/providers`、`POST /api/providers/probe`、`POST /api/providers/refresh-models`。
 
