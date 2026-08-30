@@ -39,7 +39,7 @@
 ```text
 https://github.com/Sparrived/SiriusPulse-Plugins
 项目路径：plugins/
-当前指针：aa22253
+当前指针：60e95c5
 ```
 
 当前 submodule 包含：
