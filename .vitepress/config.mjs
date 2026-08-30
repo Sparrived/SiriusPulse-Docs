@@ -64,6 +64,12 @@ export default defineConfig({
             { text: '生命周期与上下文', link: '/extensions/plugin-lifecycle' },
           ],
         },
+        {
+          text: '架构评估',
+          items: [
+            { text: 'GitHub 集成与插件化评估', link: '/modules/github-integration' },
+          ],
+        },
       ],
       '/reference/': [
         {

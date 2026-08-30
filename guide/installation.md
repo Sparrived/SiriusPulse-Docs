@@ -10,9 +10,12 @@
 ## 获取代码
 
 ```bash
-git clone https://github.com/Sparrived/SiriusChat.git
-cd SiriusChat
+git clone https://github.com/Sparrived/SiriusPulse.git
+cd SiriusPulse
+git submodule update --init --recursive
 ```
+
+外部插件独立维护在 [SiriusPulse-Plugins](https://github.com/Sparrived/SiriusPulse-Plugins)，挂载为项目根目录的 `plugins/` submodule。当前包含 `github_monitor` 和 `amkr_key_manager`。
 
 ## 安装依赖
 

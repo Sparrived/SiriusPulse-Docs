@@ -12,6 +12,7 @@ Sirius Pulse 的使用路径建议从安装、快速启动、人格配置开始�
 6. [系统架构全景](./architecture-overview)：把 CLI、WebUI、人格进程、平台和模型串起来。
 7. [记忆系统](./memory-system)：理解长期记忆如何进入 Prompt。
 8. [NapCat / OneBot](./platform-napcat)：接入 QQ。
+9. [GitHub 集成与插件化评估](../modules/github-integration)：了解 GitHub 监控拆分和 Tool/Plugin 复用边界。
 
 ## 运行形态
 
@@ -26,4 +27,4 @@ Sirius Pulse 的使用路径建议从安装、快速启动、人格配置开始�
 - `data/personas/<name>/`：人格配置、记忆、运行状态和日志相关文件。
 - `data/providers/`：Provider 配置与模型列表缓存。
 - `tools/`：用户安装或开发的外部 Tool。
-- `plugins/`：用户安装或开发的外部 Plugin。
+- `plugins/`：外部 Plugin Git submodule，当前包含 `github_monitor` 和 `amkr_key_manager`。

@@ -8,6 +8,8 @@
 
 Tool 系统加载内置和外部工具，生成模型可见工具定义，执行工具函数并记录遥测。
 
+Tool 与 Plugin 可以共享底层能力服务，但保持各自的注册、执行和返回契约。对于 GitHub 监控，当前最低风险的拆分方式是先迁移为外部被动 Tool，再在 Plugin 的主动任务和 Webhook 能力完善后迁移为真正的 Plugin。详见[《GitHub 集成与插件化评估》](./github-integration)。
+
 ## 关键协作
 
 - 由 CLI、WebUI 或人格 worker 初始化。

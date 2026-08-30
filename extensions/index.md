@@ -15,3 +15,7 @@ Sirius Pulse 有两套扩展系统：Tool 和 Plugin。
 - 外部 Tool：`tools/`
 - 框架 Plugin：`sirius_pulse/plugins/`
 - 外部 Plugin：`plugins/`
+
+## 架构评估
+
+- [GitHub 集成与插件化评估](../modules/github-integration)：GitHub 监控剥离、Tool/Plugin 基础设施复用边界、迁移阶段与风险。
