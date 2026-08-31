@@ -45,6 +45,20 @@ Sirius Pulse 的配置分为全局配置、Provider 配置、人格配置、模�
 
 相关 API：`GET /api/providers`、`POST /api/providers`、`POST /api/providers/probe`、`POST /api/providers/refresh-models`。
 
+### Provider 环境变量
+
+快速测试或无 WebUI 配置时，可以通过启动进程的环境变量提供一个 Provider：
+
+| 变量 | 说明 |
+|---|---|
+| `SIRIUS_PROVIDER_TYPE` | Provider 类型，默认 `openai-compatible`。 |
+| `SIRIUS_API_KEY` | API 密钥；也可填写 `env:变量名` 或全大写变量名作为间接引用。 |
+| `SIRIUS_BASE_URL` | 可选的 OpenAI-compatible 服务地址。 |
+| `SIRIUS_MODEL` | 默认模型名，默认 `gpt-4o-mini`。 |
+| `SIRIUS_PROVIDER_NAME` | 可选的 Provider 标识名；未设置时使用 Provider 类型。 |
+
+这些变量必须存在于实际启动 WebUI/Persona Worker 的进程环境中；仅写入 Compose `.env` 不会自动传入容器，Docker 部署须在 `environment` 或 `env_file` 中显式映射。生产环境优先使用 WebUI/ProviderRegistry 的持久化配置，并避免把密钥提交到仓库。
+
 ## 适配器配置
 
 当前主要平台实现是 NapCat OneBot v11。适配器配置保存在人格目录的 `adapters.json`，由 `EngineRuntime` 读取并启动。

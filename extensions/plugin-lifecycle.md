@@ -43,7 +43,7 @@ await self.ctx.dispatch_proactive_message(
 
 ## 启停与重载
 
-插件配置存储在共享 `plugins/_config.json`，配置管理器按插件目录隔离。WebUI 修改启停、权限或自定义设置后会通知各 Persona Worker 使用兼容的 `all` 类型重建运行时，从而清理旧任务并重新加载配置。禁用插件不会实例化、注册调度任务或启动后台资源。
+插件配置存储在共享 `plugins/_config.json`，配置管理器按插件目录隔离。Docker 部署时该文件位于宿主机挂载的 `./plugins` 目录（容器内为 `/app/plugins`），宿主机目录需允许 UID `10001` 写入。WebUI 修改启停、权限或自定义设置后会通知各 Persona Worker 使用兼容的 `all` 类型重建运行时，从而清理旧任务并重新加载配置。禁用插件不会实例化、注册调度任务或启动后台资源。
 
 ## 返回值
 

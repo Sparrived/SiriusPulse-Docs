@@ -1,6 +1,6 @@
 # Plugin 总览
 
-Plugin 是用户显式触发的聊天扩展，也可以声明由框架托管的后台任务并主动向聊天平台推送消息。外部插件代码位于项目根目录 `plugins/` Git submodule 中；框架运行时代码仍位于 `sirius_pulse/plugins/`。
+Plugin 是用户显式触发的聊天扩展，也可以声明由框架托管的后台任务并主动向聊天平台推送消息。外部插件代码位于宿主机项目根目录 `plugins/` Git submodule 中；框架运行时代码仍位于 `sirius_pulse/plugins/`。Docker/Compose 将宿主机目录挂载到 `/app/plugins`，外部源码和 `_config.json` 不会进入核心镜像。`github_monitor` 已作为外部 Plugin 提供，不再属于内置 Tool；其部署、密钥与迁移说明见 [GitHub Monitor 外部 Plugin](./github-monitor)。
 
 ## 核心文件
 

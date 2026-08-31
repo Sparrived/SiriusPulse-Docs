@@ -9,12 +9,13 @@
 | `group_management.py` | 统一处理 QQ 群管理员操作。 |
 | `interaction_with_master.py` | 与主人沟通并查询主人的公开设备状态。 |
 | `desktop_screenshot.py` | 获取桌面截图。 |
-| `github_monitor.py` | 监控 GitHub 仓库事件。 |
 | `web_lookup.py` | Web 查询。 |
 | `qq_member_info.py` | 查询 QQ 群成员信息。 |
 | `qq_like.py` | 通过已连接的 NapCat 适配器给 QQ 用户点赞，并支持复用当前会话上一次成功目标。 |
 | `workflow_state.py` | 读写按聊天会话隔离的轻量流程检查点。 |
 | `read_skill.py` | 读取当前人格的 Agent Skill 文档和同目录参考文件。 |
+
+> **迁移提示：** `github_monitor` 已不再是内置 Tool。请使用 `plugins/github_monitor/` 中的外部 Plugin；安装、配置和迁移见 [GitHub Monitor 外部 Plugin](./github-monitor)。
 
 ## read_skill
 

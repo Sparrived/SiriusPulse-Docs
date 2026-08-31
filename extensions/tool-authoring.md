@@ -1,6 +1,6 @@
 # 编写自定义 Tool
 
-外部 Tool 建议放在仓库根目录的 `tools/` 下。
+外部 Tool 由每个人格独立发现，建议放在 `data/personas/<name>/tools/` 下；它们不属于核心 Python 包，也不会随外部 Plugin submodule 共享。
 
 ```python
 from sirius_pulse.tools.models import ToolResult

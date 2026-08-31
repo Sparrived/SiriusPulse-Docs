@@ -59,15 +59,10 @@ export default defineConfig({
           text: '插件系统 (Plugins)',
           items: [
             { text: '插件系统总览', link: '/extensions/plugin-overview' },
+            { text: 'GitHub Monitor 外部插件', link: '/extensions/github-monitor' },
             { text: '编写自定义插件', link: '/extensions/plugin-authoring' },
             { text: '指令系统详解', link: '/extensions/plugin-command' },
             { text: '生命周期与上下文', link: '/extensions/plugin-lifecycle' },
-          ],
-        },
-        {
-          text: '架构评估',
-          items: [
-            { text: 'GitHub 集成与插件化评估', link: '/modules/github-integration' },
           ],
         },
       ],
@@ -101,11 +96,11 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/Sparrived/SiriusChat' },
+      { icon: 'github', link: 'https://github.com/Sparrived/SiriusPulse' },
     ],
 
     editLink: {
-      pattern: 'https://github.com/Sparrived/SiriusChat-docs/edit/main/:path',
+      pattern: 'https://github.com/Sparrived/SiriusPulse-Doc/edit/master/:path',
       text: '在 GitHub 上编辑此页',
     },
 

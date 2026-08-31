@@ -4,8 +4,9 @@ Tool 是模型可自主调用的工具系统。它不同于 Plugin：Tool 服务
 
 ## 目录
 
-- 内置 Tool：`sirius_pulse/tools/builtin/`。
-- 外部 Tool：`tools/`。
+- 内置 Tool：`sirius_pulse/tools/builtin/`，随核心 Python 包发布。
+- 外部 Tool：`data/personas/<name>/tools/`，按人格扫描，不是共享的 `plugins/` 目录。
+- 外部 Plugin：工作区根目录 `plugins/`，由独立的 Plugin runtime 加载。
 - 注册与加载：`sirius_pulse/tools/registry.py`。
 - 执行：`sirius_pulse/tools/executor.py`。
 - 鉴权：`sirius_pulse/tools/security.py`。

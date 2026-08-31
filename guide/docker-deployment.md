@@ -9,12 +9,28 @@
 | 路径或端口 | 用途 |
 |---|---|
 | `./data:/app/data` | 人格、Provider、认证、记忆、日志和运行状态的持久化数据。 |
+| `./plugins:/app/plugins` | 宿主机维护的外部 Plugin submodule 和 `plugins/_config.json`；不进入镜像。 |
 | `/root/.cache/huggingface:/home/sirius/.cache/huggingface` | Embedding 模型缓存，更新镜像时不重复下载。 |
 | `/run/sirius-container-admin.sock` | 可选的 Docker 管理代理；未配置时绑定 `/dev/null`，不是 Docker Socket。 |
 | `8080` | WebUI。 |
 | `127.0.0.1:18900` | 容器内 Embedding HTTP 服务，仅供主进程使用。 |
 
 不要执行 `docker compose down -v`，它会删除 Docker 卷；日常更新只使用下面的一条命令。
+
+## 外部 Plugin
+
+`plugins/` 是独立维护的宿主机 Git submodule，不会复制到 Docker 镜像，也不会打包进 PyPI。首次部署或更新插件源码时在宿主机执行：
+
+```bash
+git submodule update --init --recursive
+bash scripts/update-container.sh
+```
+
+官方 Compose 配置将宿主机 `./plugins` 以读写方式挂载到 `/app/plugins`，因此 WebUI 对插件启停和设置的修改会写入宿主机的 `plugins/_config.json`。Linux 宿主机请确保该目录允许镜像内 UID `10001` 写入；可按宿主机权限策略使用 ACL（例如 `sudo setfacl -R -m u:10001:rwX plugins`），同时保留宿主机 Git 用户对工作树的写权限，不要为了容器写入而把整个 Git 工作树改成 UID `10001` 所有。修改插件源码后通过 WebUI 的插件重载或重启容器使其生效。
+
+Plugin 声明的独立 Python 依赖由受信任的运行时生命周期处理；但 `httpx` 和 Playwright Python 包也是核心 Provider/通用渲染能力的共享依赖，因此仍在核心环境中。镜像在环境层安装共享 Chromium，不应因 GitHub Monitor 外移而删除；外部 Plugin 源码本身仍不会复制进镜像。
+
+GitHub 仓库监控已迁为 `plugins/github_monitor` 外部 Plugin。官方 Compose 映射了文档示例变量 `SIRIUS_GITHUB_TOKEN_SIRIUS_PULSE` 和 `SIRIUS_GITHUB_WEBHOOK_SECRET`（默认空值）；只有 Plugin settings 的 `github_token_env` / `webhook_secret_env` 正好引用这些名称时才会读取它们。自定义变量名必须在不提交的 Compose override 中另行显式映射；`.env` 本身只做变量替换。完整 WebUI 设置、进程环境变量、Webhook 和持久状态要求见 [GitHub Monitor 外部 Plugin](../extensions/github-monitor)。
 
 ## 前置条件
 
@@ -119,7 +135,7 @@ curl -fsS http://127.0.0.1:18900/health
 docker logs --tail 100 sirius-pulse-v2-test
 ```
 
-日志应包含 Embedding 服务就绪、人格已就绪和 `TOOL runtime 已挂载`。确认数据挂载时可检查：
+日志应包含 Embedding 服务就绪、人格已就绪和 `TOOL runtime 已挂载`。使用 GitHub Monitor 时，还应确认日志中的 `Plugin runtime 已挂载` 列表包含 `github_monitor`；仅看到 Tool runtime 不表示该 Plugin 已加载。确认数据挂载时可检查：
 
 ```bash
 docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' sirius-pulse-v2-test

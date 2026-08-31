@@ -1,3 +1,4 @@
 node_modules/
+# VitePress generated output and cache; build locally but never commit them.
 .vitepress/dist/
 .vitepress/cache/
