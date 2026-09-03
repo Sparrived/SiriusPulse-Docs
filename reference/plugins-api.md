@@ -74,4 +74,6 @@ artifact_dir = self.get_artifact_dir()
 - `POST /api/plugins/{plugin_name}/settings`
 - `POST /api/plugins/reload`
 
+插件列表与详情响应中的每项可包含 `ui_schema`。它是经过服务端重新校验的只读展示元数据，浏览器还会在自身信任边界再次校验；无效时回退通用表单。`POST /settings` 只接收 `_plugin_parameters` 已声明的参数值，`ui_schema`、`identity`、类型与默认值不会被合并到 settings 或写入 `plugins/_config.json`。
+
 修改插件启停、权限或设置后，WebUI 会请求 Persona Worker 重建运行时，以清理旧插件的后台任务并加载新配置。

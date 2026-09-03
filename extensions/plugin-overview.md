@@ -21,8 +21,11 @@ Plugin 是用户显式触发的聊天扩展，也可以声明由框架托管的�
 - 长周期后台任务：覆写 `create_background_tasks()`，返回 `BackgroundTaskSpec`。
 - 主动消息：使用 `await self.ctx.dispatch_proactive_message(...)`，不要直接调用平台私有 API。
 - 附件：使用 `self.get_artifact_dir()` 获取插件专用目录。
+- 可视化配置：作者可声明受限的 `_plugin_ui_schema`，为 `_plugin_parameters` 提供中文分区、标签和对象数组卡片；部署者只编辑参数值。
 
 输出模式：`direct`、`llm`、`silent`。
+
+`_plugin_parameters` 始终是类型、默认值、必填、范围、选项、对象子字段和稳定身份的唯一契约。`_plugin_ui_schema` 只影响 WebUI 展示，不会持久化，也不能声明 HTML/CSS/JavaScript、秘密字段或任意组件。没有有效 Schema 时自动使用通用表单。完整契约见 [编写自定义 Plugin](./plugin-authoring#参数契约与可视化-schema)。
 
 ## 与 Tool 的关系
 
