@@ -5,6 +5,7 @@
 | 文件 | 功能 |
 |---|---|
 | `bash.py` | 在当前容器内执行标准 Bash 命令，并通过代理管理其他容器；支持项目级 `crontab -l`、`crontab -r` 和 `printf ... | crontab -`。 |
+| `autonomy.py` | 人格的自主时间：按纯规则决定要不要自己去做点什么，把产出留给她自己的记忆。不对模型可见，也不发送任何消息。 |
 | `group_file_exec.py` | 统一处理图片发送、文件上传，以及群文件列表读取和下载。 |
 | `group_management.py` | 统一处理 QQ 群管理员操作。 |
 | `interaction_with_master.py` | 与主人沟通并查询主人的公开设备状态。 |
@@ -44,6 +45,18 @@
 - 专用 Tool 成功后用同一个幂等键和 claim token 调用 `checkpoint`，失败调用 `fail`；`next_step` 为空时该 checkpoint 自动完成流程。`restart` 用于从头开始一轮已结束或失败的流程。
 - 写操作可传 `expected_revision` 做乐观并发校验；流程契约改变时递增 `version`，避免把新参数套进旧状态。claim 租约范围为 30-3600 秒，超时后才允许接管。
 - `state_json` 只保存目标 ID、必要参数、外部 ID 和短结果摘要。Tool 会裁剪数据并过滤常见密钥字段；仍不得写入令牌、密码、Cookie、完整聊天记录、完整命令输出或堆栈。
+
+## autonomy
+
+`autonomy` 给每个人格一段属于自己的时间。它不向模型暴露工具入口，只作为被动 Tool 注册一个慢速心跳，因此不会被"某条消息触发"，也不会到点就发消息。
+
+每次触发先做一次纯规则判断，不消耗 LLM：只看她空闲了多久、手上有没有值得跟进的素材（最近的群聊内容、链接、未完成的自己的事）、今天已经自主过几次。多数情况下结论就是"什么都不做"，此时不调用模型、不写任何文件。
+
+只有判定值得做时才发起一次自主回合，让她自己决定做什么：查资料、读一篇文章、写点东西、整理想法都算，`kind` 只是自由标签而不是固定分类。产出写入 `{persona}/memory/autonomy/episodes.json`，同时作为 `scope=persona` 的记忆单元进入既有记忆，于是后续对话由既有检索自然带出，不需要额外的"作品展示"通道。
+
+做与说是两件事：该 Tool 从不发送任何消息。自主回合内会拒绝一切 `external_write` / `destructive` 类工具，因此她即使想发也无处可发；要不要把某件事讲给别人听，仍然由正常的群聊回复流程另行决定。
+
+在 WebUI 的 `autonomy` 配置表单中调整 `check_interval_seconds`（检查间隔，最少 60 秒）、`attempt_cooldown_seconds`（两次真正调用模型之间的最小间隔）和 `daily_episode_budget`（每天最多发生几次，设为 0 即可停用）。配置与 `_enabled` 一起保存在 `{persona}/tool_data/autonomy.json`；后两项每次心跳都会重新读取，`check_interval_seconds` 在人格重启后生效。自主回合使用独立的 `autonomy_generate` 任务名，因此不会占用也不会触发正常回复的冷却与配额。
 
 ## Bash
 
