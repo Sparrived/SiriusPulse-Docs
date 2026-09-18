@@ -76,9 +76,15 @@
 
 自主回合内会拒绝一切 `external_write` / `destructive` 类工具，因此她不能在做事的当口顺手往群里发消息；说与做始终是两个决定。唯一豁免的是 `intend_share`（`allowed_when_self_initiated`），因为它只登记、不投递。
 
-WebUI 的 `autonomy` 配置表单可调整 `check_interval_seconds`（检查间隔，最少 60 秒）、`attempt_cooldown_seconds`（两次真正调用模型之间的最小间隔）、`share_cooldown_seconds`（两次主动分享之间的最小间隔）和 `daily_episode_budget`（每天最多发生几次，设为 0 即可停用）。配置与 `_enabled` 一起保存在 `{persona}/tool_data/autonomy.json`；后三项每次心跳都会重新读取，`check_interval_seconds` 在人格重启后生效。自主回合使用独立的 `autonomy_generate` 任务名，因此不会占用也不会触发正常回复的冷却与配额。
+WebUI 的 `autonomy` 配置表单只有两项：`check_interval_seconds`（心跳多久检查一次，最少 60 秒）与 `share_cooldown_seconds`（两次主动分享之间的最小间隔）。配置与 `_enabled` 一起保存在 `{persona}/tool_data/autonomy.json`；`share_cooldown_seconds` 每次心跳都会重新读取，`check_interval_seconds` 在人格重启后生效。自主回合使用独立的 `autonomy_generate` 任务名，因此不会占用也不会触发正常回复的冷却。
 
-需要留意的是，目前自主行为只按**事件数量**限流（`daily_episode_budget`），还没有与聊天分开的 token 预算；`bash` 等只读工具可在容器内任意读取，自主写入也尚未收敛到她自己的工作区。
+### 没有每日配额
+
+自主行为**不受次数限制**：没有每日上限，也没有"两次自主之间必须间隔多久"的冷却。她只要确实惦记着什么，就可以在任意一次心跳上行动；真正的节奏上限就是 `check_interval_seconds` 本身。
+
+限制她的是意图本身，而不是计数器：一件做完的事会被 `resolve`，说过的话会被 `shared_at` 标记，放久了会自然淡去，因此没有意图时心跳一律静默。唯一的兜底是单条意图最多尝试 `3` 次——否则一件始终做不完、或她反复决定不做的事，会在每个心跳上各烧一次模型调用。想完全停用自主行为，把 `_enabled` 设为 `false`。
+
+需要留意的是，取消配额后**自主行为没有与聊天分开的 token 预算**，实际花费由心跳间隔与单条意图的尝试上限间接决定；`bash` 等只读工具可在容器内任意读取，自主写入也尚未收敛到她自己的工作区。
 
 ## Bash
 
