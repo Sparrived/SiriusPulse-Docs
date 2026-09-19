@@ -40,7 +40,7 @@ Sirius Pulse 的配置分为全局配置（含 AMKR 连接）、人格配置、�
 - `task_timeout`：按任务设置请求超时。
 - `task_retries`：按任务设置失败重试次数。
 
-代码模型位于 `sirius_pulse/config/models.py` 的 `OrchestrationPolicy`，同时承载与模型无关的回复策略，例如 `task_enabled`、`enable_prompt_driven_splitting`、`engagement_sensitivity`、`min_reply_interval_seconds`、`main_model_reply_cooldown_seconds`、`memory`。旧的 `unified_model`、`task_models`、`task_temperatures`、`task_max_tokens` 已不再生效。
+代码模型位于 `sirius_pulse/config/models.py` 的 `OrchestrationPolicy`，同时承载与模型无关的回复策略，例如 `task_enabled`、`enable_prompt_driven_splitting`、`engagement_sensitivity`、`min_reply_interval_seconds`、`main_model_reply_cooldown_seconds`、`memory`。历史字段 `unified_model`、`task_models`、`task_temperatures`、`task_max_tokens` 已从代码中删除：写在配置里也会被忽略，不会再有「某个任务直连某个真实模型名」的路径。
 
 WebUI 不再提供模型编排页面，`/api/persona/orchestration` 与 `/api/persona/task-params` 端点已移除。
 
