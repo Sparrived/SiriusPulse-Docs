@@ -8,7 +8,7 @@
 
 WebUI 使用 aiohttp 提供 REST API、静态前端和 WebSocket 事件。routes.py 是 API 路由表。
 
-全局页面包括「全局设置」（含 AMKR 连接）与只读的「AMKR 运维」页。后者只报告连通性、AMKR 版本、`ops_enabled` 与各人格任务登记状态，并提供跳转 AMKR 自带面板的外链；Sirius Pulse 内不再有模型或采样参数编辑入口。
+全局页面包括「全局设置」（含 AMKR 连接）与「AMKR 运维」页。后者报告连通性、AMKR 版本、`ops_enabled` 与各人格任务登记状态，并可就地嵌入所选人格的 AMKR 工作空间面板（用量读数与任务增删改都在 AMKR 自己的页面里完成）；Sirius Pulse 内没有模型或采样参数编辑入口。面板地址由管理员专用的 `GET /api/amkr/panel` 按需下发，不写进前端源码。
 
 ## 关键协作
 

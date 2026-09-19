@@ -35,7 +35,23 @@
 
 AMKR 是**共享单实例**，并非多租户：多个 AI 服务可以同时使用它。隔离靠请求头 `X-AMKR-Workspace`。框架按人格划分命名空间：`<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`），由 `workspace_for()` 拼接。
 
-工作空间由「在里面建第一个任务」隐式产生，没有独立的「新建工作空间」步骤。请求头为空时不发送，等价于 AMKR 的默认工作空间。
+工作空间由框架**显式创建**（`POST /api/workspaces`），不再靠「建第一个任务」隐式产生。原因是创建的那一刻是拿到该空间**面板 key** 的唯一时机——之后 AMKR 的目录与导出都刻意剥掉它。因此顺序是**先建空间拿 key，再注册任务**。请求头为空时不发送，等价于 AMKR 的默认工作空间。
+
+若空间已在 AMKR 侧存在而本地没有 key，AMKR 只返回 409 且不会重发 key：注册会报错并提示去读 AMKR 配置文件的 `workspaces.<空间>.api_key`，或删掉该空间后重建。
+
+## 面板 key 与嵌入
+
+面板 key 是一把**只对该工作空间有效**的受限凭据：能读写本空间的任务与读数，看不到别的空间，也不能用 `/v1/*` 代理面。
+
+它存在 `data/global_config.json` 的 `amkr_panel_keys`（`{工作空间: key}` 明文映射，只为服务端持有）。该字段**绝不随 `GET /api/global-config` 回显**——那个接口任何已登录用户都能读。面板地址只从管理员专用的 `GET /api/amkr/panel?persona=` 取，形如：
+
+```
+<ui_url>/panel.html#k=<面板 key>
+```
+
+凭据必须在 **fragment** 里：fragment 不会被浏览器发给服务端，因此既不进 `Referer`，也不进 AMKR 或任何反向代理的访问日志。运维页按需取该地址再塞进 iframe；AMKR 未设 `X-Frame-Options` 与 CSP `frame-ancestors`，嵌入是它设计的用法。
+
+注意 AMKR **不发 CORS 头**：若面板页与接口不同源，浏览器会挡下请求。远程访问应把 AMKR 挂到同一域名下的路径（反向代理），而不是期待跨源直连。
 
 ## 注册策略
 
@@ -43,15 +59,16 @@ AMKR 是**共享单实例**，并非多租户：多个 AI 服务可以同时使�
 
 主要入口：
 
-- `register_persona_tasks()`、`register_persona_tasks_async()`：注册缺失任务。
-- `collect_amkr_status()`、`inspect_persona_workspace()`、`amkr_ui_url()`：只读巡检，不创建也不修改任何任务。
+- `ensure_persona_workspace_key()`：建出工作空间并保存面板 key（已存过则直接返回）。
+- `register_persona_tasks()`、`register_persona_tasks_async()`：先确保空间存在，再注册缺失任务。
+- `collect_amkr_status()`、`inspect_persona_workspace()`、`amkr_ui_url()`、`persona_panel_url()`：只读巡检与面板地址，不创建也不修改任何任务。
 - `WorkspaceState`、`SyncResult`、`AmkrError`、`AmkrAdminClient`：状态与错误模型。
 
 ## 关键协作
 
 - 由 `EngineRuntime._build_provider()` 构建，连接配置来自 `data/global_config.json`（环境变量优先）。
 - `Brain` 与 `core/model_router.py` 只说明「这是哪个任务」，不选择模型。
-- WebUI 通过 `GET /api/amkr/status` 观察状态、`POST /api/amkr/register` 触发注册，见 [WebUI API](../reference/webui-api)。
+- WebUI 通过 `GET /api/amkr/status` 观察状态、`POST /api/amkr/register` 触发注册、`GET /api/amkr/panel` 取面板地址，见 [WebUI API](../reference/webui-api)。
 
 ## 排查建议
 

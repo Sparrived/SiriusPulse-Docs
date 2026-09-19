@@ -41,7 +41,9 @@ AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填�
 
 AMKR 是共享单实例，允许多个 AI 服务同时使用，**不是多租户**。隔离靠请求头 `X-AMKR-Workspace`，框架按人格拼接为 `<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`）。
 
-工作空间由「在里面建第一个任务」隐式产生，没有单独的创建步骤。请求头为空时不发送，等价于 AMKR 的默认工作空间。
+工作空间由框架**显式创建**（`POST /api/workspaces`），不再靠「建第一个任务」隐式产生：创建的那一刻是拿到该空间**面板 key** 的唯一时机，之后 AMKR 不再返回它，因此顺序必须是**先建空间拿 key，再注册任务**。请求头为空时不发送，等价于 AMKR 的默认工作空间。
+
+若空间已在 AMKR 侧存在而本地没有 key，AMKR 只返回 409 且不会重发 key——注册会报错并提示去读 AMKR 配置文件的 `workspaces.<空间>.api_key`，或删掉该空间后重建。
 
 ## 注册策略
 
@@ -49,14 +51,15 @@ AMKR 是共享单实例，允许多个 AI 服务同时使用，**不是多租户
 
 ## API
 
-- `GET /api/amkr/status`：只读。返回 `configured`、`base_url`、`workspace_base`、`ui_url`、`reachable`、`version`、`ops_enabled`、`webui_mounted`、`known_tasks`，以及每个人格的 `{persona, workspace, registered[], missing[], error}`。
-- `POST /api/amkr/register`：补齐缺失任务名。请求体 `{"persona": "..."}` 指定单个人格，`{}` 表示全部人格。
+- `GET /api/amkr/status`：只读。返回 `configured`、`base_url`、`workspace_base`、`ui_url`、`reachable`、`version`、`ops_enabled`、`webui_mounted`、`known_tasks`，以及每个人格的 `{persona, workspace, registered[], missing[], error, panel_ready}`。**不含**面板 key 或面板地址。
+- `GET /api/amkr/panel?persona=<名字>`：**仅管理员**（非 admin 返回 403）。返回 `{"persona", "url"}`，`url` 是可嵌入的 AMKR 工作空间面板地址（fragment 内是明文面板 key）；该人格没有 key 时返回 409 并说明补救路径。
+- `POST /api/amkr/register`：建出工作空间（含取面板 key）并补齐缺失任务名。请求体 `{"persona": "..."}` 指定单个人格，`{}` 表示全部人格。
 - `GET /api/models`：仍然存在，但 `available_models` / `model_choices` 返回的是上述 12 个任务名（含中文标签），不再是厂商模型列表。
 
 `/api/providers`、`/api/providers/probe`、`/api/providers/refresh-models`、`/api/providers/models-probe`、`/api/providers/proxy` 已全部移除，代理配置与 `data/providers/proxy.json` 也不再存在。
 
 ## 相关配置
 
-- 全局配置的其余字段见 [全局配置参考](./global-config)。
-- WebUI 的「AMKR 运维」页只报告连通性与注册状态，并外链到 AMKR 自己的面板；Sirius Pulse 内**没有**模型或采样参数编辑入口。
-- AMKR 应绑定 `127.0.0.1` 或内网地址；Sirius Pulse 的 `docker-compose.yml` 使用 `network_mode: host`，因此 `http://127.0.0.1:8000` 能直接到达 AMKR。
+- 全局配置的其余字段见 [全局配置参考](./global-config)。面板 key 存在 `amkr_panel_keys`（`{工作空间: key}`），该字段**不随 `GET /api/global-config` 回显**。
+- WebUI 的「AMKR 运维」页报告连通性与注册状态，并可就地嵌入所选人格的工作空间面板；Sirius Pulse 内**没有**模型或采样参数编辑入口——面板本身就是 AMKR 的页面。
+- AMKR 应绑定 `127.0.0.1` 或内网地址；Sirius Pulse 的 `docker-compose.yml` 使用 `network_mode: host`，因此 `http://127.0.0.1:8000` 能直接到达 AMKR。但**面板是浏览器直接连 AMKR 的**：若 AMKR 地址是回环地址，只有从部署机本机打开运维页才加载得出来，远程访问请用同源反向代理。

@@ -77,7 +77,9 @@ AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本�
 
 `model` 命中任务名时，框架**不发送** `temperature` 与 `max_tokens`，由 AMKR 的任务定义决定；两边同时配置会被 AMKR 以 400 拒绝。
 
-隔离靠请求头 `X-AMKR-Workspace`：框架按人格拼接为 `<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`）。AMKR 是共享单实例，并非多租户。工作空间由「在里面建第一个任务」隐式产生，没有单独的创建步骤。
+隔离靠请求头 `X-AMKR-Workspace`：框架按人格拼接为 `<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`）。AMKR 是共享单实例，并非多租户。工作空间由框架**显式创建**（`POST /api/workspaces`）：创建的那一刻是拿到该空间**面板 key** 的唯一时机，因此顺序是**先建空间拿 key，再注册任务**。
+
+面板 key 存在 `data/global_config.json` 的 `amkr_panel_keys`，不随全局配置接口回显；「AMKR 运维」页可就地嵌入所选人格的工作空间面板（面板是 AMKR 自己的页面，用量读数与任务增删改都在那里完成）。
 
 注册策略是**只创建缺失的任务名**，已存在的任务不比对、不更新，后续调整全部在 AMKR 面板里完成。详见 [AMKR 接入配置参考](../reference/provider-config) 与 [AMKR 接入模块](../modules/provider-system)。
 
