@@ -33,17 +33,36 @@
 
 ## 工作空间
 
-AMKR 是**共享单实例**，并非多租户：多个 AI 服务可以同时使用它。隔离靠请求头 `X-AMKR-Workspace`。框架按人格划分命名空间：`<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`），由 `workspace_for()` 拼接。
+AMKR 是**共享单实例**，并非多租户：多个 AI 服务可以同时使用它。隔离靠**凭据本身**——模型调用发的是该空间的推理 key，AMKR 据此决定请求落在哪个空间，请求头 `X-AMKR-Workspace` 在推理 key 生效时**被忽略**（框架仍发送它，仅为兼容旧版 AMKR）。框架按人格划分命名空间：`<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`），由 `workspace_for()` 拼接。
 
-工作空间由框架**显式创建**（`POST /api/workspaces`），不再靠「建第一个任务」隐式产生。原因是创建的那一刻是拿到该空间**面板 key** 的唯一时机——之后 AMKR 的目录与导出都刻意剥掉它。因此顺序是**先建空间拿 key，再注册任务**。请求头为空时不发送，等价于 AMKR 的默认工作空间。
+工作空间由框架**显式创建**（`POST /api/workspaces`），不再靠「建第一个任务」隐式产生。原因是创建的那一刻是拿到该空间**两把凭据**的唯一时机——之后 AMKR 的目录与导出都刻意剥掉它们。因此顺序是**先建空间拿凭据，再注册任务**；引擎构建同理，**先备齐凭据再建 provider**，否则全新安装上 provider 永远拿不到推理 key。
 
-若空间已在 AMKR 侧存在而本地没有 key，AMKR 只返回 409 且不会重发 key：注册会报错并提示去读 AMKR 配置文件的 `workspaces.<空间>.api_key`，或删掉该空间后重建。
+若空间已在 AMKR 侧存在而本地没有 key，AMKR 只返回 409 且不会重发 key：注册会报错并提示去读 AMKR 配置文件的 `workspaces.<空间>.api_key`（面板 key）与 `workspaces.<空间>.inference_key`（推理 key），或删掉该空间后重建。
+
+## 两把按空间签发的凭据
+
+工作空间创建时一并发放两把凭据，**互不通用**：
+
+| 凭据 | 前缀 | 用途 | Sirius 里从哪取 |
+|---|---|---|---|
+| 面板 key | `amkr_ws_` | 嵌入式工作空间面板（读写本空间任务与读数） | `GET /api/amkr/panel?persona=`（仅管理员） |
+| 推理 key | `amkr_ik_` | `/v1` 模型调用 | 引擎内部读取，不经接口回显；轮换时随响应回一次 |
+
+**模型调用只用推理 key，不用 `amkr_local_api_key`**：后者是能增删供应商与 Key 的管理员凭据，放进每次对话补全的请求头等于让推理路径随时可以升级成管理操作。推理 key 被 AMKR 钉死在单个空间上，因此它**缺失时引擎不就绪，且绝不回落**到管理员凭据——回落会把一个配置疏漏静默变成一次越权。补救是轮换（空间建于该能力之前时本地只有面板 key，而推理 key 已无法取回）：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/amkr/rotate-inference-key \
+  -H "Authorization: Bearer <WebUI 管理员凭据>" \
+  -H "Content-Type: application/json" -d '{"persona": "sirius"}'
+```
+
+轮换**只换推理 key**，不影响面板 key 与已嵌入的面板；旧 key 立即失效，因此接口会接着给该人格写 `provider` 重载标志重建 provider。
 
 ## 面板 key 与嵌入
 
 面板 key 是一把**只对该工作空间有效**的受限凭据：能读写本空间的任务与读数，看不到别的空间，也不能用 `/v1/*` 代理面。
 
-它存在 `data/global_config.json` 的 `amkr_panel_keys`（`{工作空间: key}` 明文映射，只为服务端持有）。该字段**绝不随 `GET /api/global-config` 回显**——那个接口任何已登录用户都能读。面板地址只从管理员专用的 `GET /api/amkr/panel?persona=` 取，形如：
+它存在 `data/global_config.json` 的 `amkr_panel_keys`（`{工作空间: key}` 明文映射，只为服务端持有）；推理 key 同样形状地存在 `amkr_inference_keys`。两个字段都**绝不随 `GET /api/global-config` 回显**——那个接口任何已登录用户都能读。面板地址只从管理员专用的 `GET /api/amkr/panel?persona=` 取，形如：
 
 ```
 <ui_url>/panel.html#k=<面板 key>
@@ -59,16 +78,17 @@ AMKR 是**共享单实例**，并非多租户：多个 AI 服务可以同时使�
 
 主要入口：
 
-- `ensure_persona_workspace_key()`：建出工作空间并保存面板 key（已存过则直接返回）。
+- `ensure_persona_workspace_key()`：建出工作空间并保存**两把**凭据（已存过则直接返回）。
+- `rotate_persona_inference_key()`：换一把推理 key 并存下来（不影响面板 key）。
 - `register_persona_tasks()`、`register_persona_tasks_async()`：先确保空间存在，再注册缺失任务。
 - `collect_amkr_status()`、`inspect_persona_workspace()`、`amkr_ui_url()`、`persona_panel_url()`：只读巡检与面板地址，不创建也不修改任何任务。
-- `WorkspaceState`、`SyncResult`、`AmkrError`、`AmkrAdminClient`：状态与错误模型。
+- `WorkspaceState`、`WorkspaceCredentials`、`SyncResult`、`AmkrError`、`AmkrAdminClient`：状态与错误模型。
 
 ## 关键协作
 
-- 由 `EngineRuntime._build_provider()` 构建，连接配置来自 `data/global_config.json`（环境变量优先）。
+- 由 `EngineRuntime._build_provider()` 构建，连接配置来自 `data/global_config.json`（环境变量优先）；凭据取该人格空间的**推理 key**，缺失时返回 `None`（不就绪）。
 - `Brain` 与 `core/model_router.py` 只说明「这是哪个任务」，不选择模型。
-- WebUI 通过 `GET /api/amkr/status` 观察状态、`POST /api/amkr/register` 触发注册、`GET /api/amkr/panel` 取面板地址，见 [WebUI API](../reference/webui-api)。
+- WebUI 通过 `GET /api/amkr/status` 观察状态、`POST /api/amkr/register` 触发注册、`GET /api/amkr/panel` 取面板地址、`POST /api/amkr/rotate-inference-key` 轮换推理凭据，见 [WebUI API](../reference/webui-api)。
 
 ## 排查建议
 

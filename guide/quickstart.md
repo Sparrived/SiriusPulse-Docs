@@ -23,7 +23,7 @@ WebUI 也提供创建、启动、停止和切换人格的页面。
 Sirius Pulse 自身不再内置任何模型厂商实现，所有模型调用统一发往本地 [AMKR](https://github.com/Sparrived/auto-model-key-router)（`auto-model-key-router`，OpenAI 兼容路由）。请先跑起 AMKR，然后在 WebUI 的「全局设置」中填写：
 
 - `amkr_base_url`：AMKR 地址，默认 `http://127.0.0.1:8000`。
-- `amkr_local_api_key`：AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同。
+- `amkr_local_api_key`：AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同。**只用于建空间与注册任务名**——模型调用用的是建空间时按人格自动签发的推理 key，不需要你手填。
 - `amkr_workspace`：本应用在共享 AMKR 中的命名空间前缀，默认 `sirius-pulse`。
 
 ## 4. 注册任务名并配置模型

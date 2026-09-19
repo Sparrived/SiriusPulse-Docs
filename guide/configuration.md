@@ -51,10 +51,12 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 | 字段 | 说明 |
 |---|---|
 | `amkr_base_url` | AMKR 地址，**供服务端进程访问**，默认 `http://127.0.0.1:8000`。 |
-| `amkr_local_api_key` | AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同，可增删供应商与 Key，只保存在服务端；WebUI API 只回显掩码。 |
+| `amkr_local_api_key` | AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同，可增删供应商与 Key，只保存在服务端；WebUI API 只回显掩码。**只用于管理操作**（建空间、注册任务名），不用于模型调用。 |
 | `amkr_workspace` | 本应用在共享 AMKR 中的命名空间前缀，默认 `sirius-pulse`。 |
 | `amkr_public_url` | AMKR 地址，**供用户浏览器访问**（运维页外链与内嵌面板）；留空表示与 `amkr_base_url` 相同。 |
 | `amkr_ui_enabled` | WebUI 全局设置里的「启用 AMKR 自带 WebUI」开关。 |
+| `amkr_panel_keys` | `{工作空间: 面板 key}`，建空间时自动写入，用于嵌入式面板；整字段不回显。 |
+| `amkr_inference_keys` | `{工作空间: 推理 key}`，建空间时自动写入，**模型调用用它**；整字段不回显。 |
 
 `amkr_base_url` 与 `amkr_public_url` 在同机部署下必须分开：容器走回环最省事，但回环在用户浏览器里指向用户自己的机器；面板由浏览器直连 AMKR 取数，因此远程访问必须填写 `amkr_public_url`（通常是反代域名，且需与面板同源）。
 
@@ -81,9 +83,9 @@ AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本�
 
 `model` 命中任务名时，框架**不发送** `temperature` 与 `max_tokens`，由 AMKR 的任务定义决定；两边同时配置会被 AMKR 以 400 拒绝。
 
-隔离靠请求头 `X-AMKR-Workspace`：框架按人格拼接为 `<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`）。AMKR 是共享单实例，并非多租户。工作空间由框架**显式创建**（`POST /api/workspaces`）：创建的那一刻是拿到该空间**面板 key** 的唯一时机，因此顺序是**先建空间拿 key，再注册任务**。
+隔离靠**凭据本身**：模型调用发的是该人格空间的**推理 key**，AMKR 据此决定请求落在哪个空间，请求头 `X-AMKR-Workspace` 因而被忽略（框架仍发送，仅为兼容旧版 AMKR）。框架按人格拼接空间名为 `<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`）。AMKR 是共享单实例，并非多租户。工作空间由框架**显式创建**（`POST /api/workspaces`）：创建的那一刻是拿到该空间**两把凭据**的唯一时机，因此顺序是**先建空间拿凭据，再注册任务**。
 
-面板 key 存在 `data/global_config.json` 的 `amkr_panel_keys`，不随全局配置接口回显；「AMKR 运维」页可就地嵌入所选人格的工作空间面板（面板是 AMKR 自己的页面，用量读数与任务增删改都在那里完成）。
+模型调用用的是推理 key 而不是 `amkr_local_api_key`——后者能增删供应商与 Key，不该出现在推理路径上；推理 key 缺失时引擎**不就绪**，不会回落。两把凭据分别存在 `data/global_config.json` 的 `amkr_panel_keys`（面板 key）与 `amkr_inference_keys`（推理 key），都不随全局配置接口回显；「AMKR 运维」页可就地嵌入所选人格的工作空间面板（面板是 AMKR 自己的页面，用量读数与任务增删改都在那里完成），并可在缺凭据时轮换推理 key。
 
 注册策略是**只创建缺失的任务名**，已存在的任务不比对、不更新，后续调整全部在 AMKR 面板里完成。详见 [AMKR 接入配置参考](../reference/provider-config) 与 [AMKR 接入模块](../modules/provider-system)。
 

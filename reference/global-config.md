@@ -14,13 +14,15 @@
   "amkr_local_api_key": "",
   "amkr_workspace": "sirius-pulse",
   "amkr_public_url": "",
-  "amkr_ui_enabled": true
+  "amkr_ui_enabled": true,
+  "amkr_panel_keys": {},
+  "amkr_inference_keys": {}
 }
 ```
 
 API：`GET /api/global-config`、`POST /api/global-config`。
 
-AMKR 相关的字段详见 [AMKR 接入配置参考](./provider-config)；`amkr_local_api_key` 是 AMKR 的管理员凭据，WebUI API 只回显掩码（`amkr_panel_keys` 则整字段不回显）。
+AMKR 相关的字段详见 [AMKR 接入配置参考](./provider-config)；`amkr_local_api_key` 是 AMKR 的管理员凭据（只用于建空间与注册任务，不用于模型调用），WebUI API 只回显掩码；`amkr_panel_keys` 与 `amkr_inference_keys` 是 `{工作空间: key}` 明文凭据映射，两个字段都整字段不回显，也无法通过 `GET`/`POST` 读写——它们由建空间与轮换流程自己维护。
 
 ## 启动环境变量
 
