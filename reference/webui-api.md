@@ -4,7 +4,7 @@ WebUI API 路由集中定义在 `sirius_pulse/webui/routes.py`。
 
 ## 全局 API
 
-`/api/global-config`、`/api/models`、`/api/amkr/status`、`/api/amkr/panel`、`/api/amkr/rotate-inference-key`、`/api/amkr/register`、`/api/tokens`、`/api/telemetry`、`/api/embedding/status`、`/api/embedding/restart`、`/api/system/logs`、`/api/auth/login`、`/api/auth/status`、`/api/monitoring/overview`、`/api/monitoring/metrics`、`/api/monitoring/health`、`/api/dispatcher/overview`、`/api/shutdown`。
+`/api/global-config`、`/api/models`、`/api/amkr/status`、`/api/amkr/panel`、`/api/amkr/rotate-inference-key`、`/api/amkr/register`、`/api/tokens`、`/api/telemetry`、`/api/embedding/status`、`/api/embedding/rebuild`、`/api/system/logs`、`/api/auth/login`、`/api/auth/status`、`/api/monitoring/overview`、`/api/monitoring/metrics`、`/api/monitoring/health`、`/api/dispatcher/overview`、`/api/shutdown`。
 
 `/api/models` 返回的是 12 个 AMKR 任务名（`available_models` / `model_choices`），不再是厂商模型列表。`/api/amkr/status` 为只读巡检（含各人格 `panel_ready` / `inference_ready`，但**不含**任何 key），`/api/amkr/register` 建出工作空间并补齐缺失任务名（请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）。`/api/amkr/panel?persona=<名字>` **仅管理员可用**，返回可嵌入的工作空间面板地址（fragment 内为明文面板 key），即运维页 iframe 的来源。`/api/amkr/rotate-inference-key` **仅管理员可用**，请求体 `{"persona": "..."}`，换一把该空间的推理 key 并返回 `{"persona", "inference_key"}`——明文只回这一次，旧 key 立即失效且**不影响面板 key**。旧的 `/api/providers*` 端点已全部移除。
 

@@ -31,7 +31,7 @@ AMKR 相关的字段详见 [AMKR 接入配置参考](./provider-config)；`amkr_
 | 变量 | 用途 |
 |---|---|
 | `SIRIUS_AMKR_BASE_URL`、`SIRIUS_AMKR_API_KEY`、`SIRIUS_AMKR_WORKSPACE`、`SIRIUS_AMKR_PUBLIC_URL` | 覆盖 `global_config.json` 中的 AMKR 连接配置，环境变量优先。 |
-| `SIRIUS_EMBEDDING_URL` | 共享 Embedding 服务地址，默认 `http://127.0.0.1:18900`。 |
+| `SIRIUS_EMBEDDING_MODEL` | 覆盖 `global_config.json` 的 `embedding_model`，默认 `BAAI/bge-m3`。换模型后必须重建索引（见下）。 |
 | `SIRIUS_CONTAINER_ADMIN_SOCKET` | `bash` 使用的容器管理代理 Socket；未设置时使用安全占位路径。 |
 | `SIRIUS_PULSE_HOME`、`SIRIUS_PULSE_FILE_ROOT` | 工作区和文件访问根目录的运行时约定。 |
 

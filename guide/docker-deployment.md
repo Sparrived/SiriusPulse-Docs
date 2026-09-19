@@ -1,6 +1,6 @@
 # Docker 部署
 
-本页记录 Sirius Pulse 在 Linux 服务器上的单容器 Docker 部署流程。主容器同时运行 WebUI、活跃人格和内部 Embedding 子进程；不需要单独启动 Embedding 容器。
+本页记录 Sirius Pulse 在 Linux 服务器上的单容器 Docker 部署流程。主容器同时运行 WebUI 与活跃人格；**向量化由 AMKR 提供**，容器内不再有 Embedding 子进程或端口。
 
 ## 运行结构
 
@@ -10,10 +10,8 @@
 |---|---|
 | `./data:/app/data` | 人格、AMKR 连接配置、认证、记忆、日志和运行状态的持久化数据。 |
 | `./plugins:/app/plugins` | 宿主机维护的外部 Plugin submodule 和 `plugins/_config.json`；不进入镜像。 |
-| `/root/.cache/huggingface:/home/sirius/.cache/huggingface` | Embedding 模型缓存，更新镜像时不重复下载。 |
 | `/run/sirius-container-admin.sock` | 可选的 Docker 管理代理；未配置时绑定 `/dev/null`，不是 Docker Socket。 |
 | `8080` | WebUI。 |
-| `127.0.0.1:18900` | 容器内 Embedding HTTP 服务，仅供主进程使用。 |
 
 不要执行 `docker compose down -v`，它会删除 Docker 卷；日常更新只使用下面的一条命令。
 
@@ -47,7 +45,7 @@ GitHub 仓库监控已迁为 `plugins/github_monitor` 外部 Plugin。官方 Com
 - 已安装 Docker Engine 和 Docker Compose 插件。
 - 已安装 Git，服务器能够拉取项目仓库。
 - 运行目录为 `/root/SiriusPulse`，其中包含 `docker-compose.yml`、`Dockerfile` 和 `scripts/update-container.sh`。
-- 使用主机网络时，`8080` 与 `18900` 不能被其他非项目进程占用；NapCat 仍可通过宿主机地址访问。
+- 使用主机网络时，`8080` 不能被其他非项目进程占用；NapCat 仍可通过宿主机地址访问。
 
 ## 可选：Docker 管理代理
 
@@ -129,9 +127,9 @@ bash scripts/update-container.sh
 bash /root/SiriusPulse/scripts/update-container.sh
 ```
 
-脚本会快进拉取 `master`、更新 Git 子模块、验证 Compose 配置、构建镜像、强制重建主容器、清理已从 Compose 移除的孤立容器，并等待 WebUI 与内部 Embedding 健康。它不会执行 `down -v`，也不会删除 `data/`、认证信息、记忆、AMKR 连接配置或 Hugging Face 模型缓存。
+脚本会快进拉取 `master`、更新 Git 子模块、验证 Compose 配置、构建镜像、强制重建主容器、清理已从 Compose 移除的孤立容器，并等待 WebUI 与 AMKR 的 embedding 模型双双就绪。它不会执行 `down -v`，也不会删除 `data/`、认证信息、记忆或 AMKR 连接配置。
 
-普通源码改动会复用现有 `sirius-pulse:latest` 的完整运行环境，只复制应用源码；Python 依赖、Playwright 系统库和 Chromium 都不会重新下载。更新脚本会比较 `uv.lock` 与 Dockerfile 环境键，任一变化或首次部署没有旧镜像时，才会回退到完整环境构建。若发现旧 `sirius-pulse-v2-test` 容器但没有 `data/`，脚本会停止并要求先执行首次迁移，避免以空目录启动并覆盖可用数据。
+普通源码改动会复用现有 `sirius-pulse:latest` 的完整运行环境，只复制应用源码；Python 依赖、Playwright 系统库和 Chromium 都不会重新下载。更新脚本会比较 `uv.lock` 与 Dockerfile 环境键，任一变化或首次部署没有旧镜像时，才会回退到完整环境构建。Chromium 也会从旧镜像复制到新的环境层，避免重建时重新下载。若发现旧 `sirius-pulse-v2-test` 容器但没有 `data/`，脚本会停止并要求先执行首次迁移，避免以空目录启动并覆盖可用数据。
 
 ## 健康检查
 
@@ -141,15 +139,21 @@ bash /root/SiriusPulse/scripts/update-container.sh
 cd /root/SiriusPulse
 docker compose ps
 curl -fsS http://127.0.0.1:8080/ >/dev/null
-curl -fsS http://127.0.0.1:18900/health
+curl -fsS http://127.0.0.1:28881/health
 docker logs --tail 100 sirius-pulse-v2-test
 ```
 
-日志应包含 Embedding 服务就绪、人格已就绪和 `TOOL runtime 已挂载`。使用 GitHub Monitor 时，还应确认日志中的 `Plugin runtime 已挂载` 列表包含 `github_monitor`；仅看到 Tool runtime 不表示该 Plugin 已加载。确认数据挂载时可检查：
+日志应包含 AMKR Embedding 已就绪、人格已就绪和 `TOOL runtime 已挂载`。使用 GitHub Monitor 时，还应确认日志中的 `Plugin runtime 已挂载` 列表包含 `github_monitor`；仅看到 Tool runtime 不表示该 Plugin 已加载。确认数据挂载时可检查：
 
 ```bash
 docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' sirius-pulse-v2-test
 ```
+
+## 更换 Embedding 模型
+
+向量化由 AMKR 提供，模型名写在 `global_config.json` 的 `embedding_model`（默认 `BAAI/bge-m3`）。在 AMKR 中新增 embedding 模型后，还要把该模型名加进每个人格工作空间的模型白名单，否则工作空间推理 key 发起的直连模型调用会被拒。
+
+**换模型必须重建索引**：不同模型的向量维度不同（`bge-small-zh` 512 维、`bge-m3` 1024 维），旧向量与新向量算出的相似度没有意义。WebUI 仪表盘的 Embedding 项会显示「待重建」，气泡里给出「重建索引」按钮；重建会用当前模型重算该人格全部日记向量，期间语义检索不可用。
 
 ## WebUI 认证与数据安全
 
@@ -162,6 +166,7 @@ WebUI 管理员用户名为 `admin`。首次启动会生成随机密码并只在
 | 现象 | 处理方式 |
 |---|---|
 | 更新后仍有旧 Embedding 容器 | 使用 `bash scripts/update-container.sh`，脚本会执行 `--remove-orphans`。 |
-| `18900` 被其他进程占用 | 用 `ss -ltnp | grep 18900` 确认来源，停止无关进程后重新运行更新脚本。 |
-| WebUI 未响应 | 检查 `docker compose ps`、`docker logs --tail 100 sirius-pulse-v2-test`，再分别检查 `8080` 和 `18900`。 |
+| Embedding 显示「不可用」 | 在 AMKR 中确认 embedding 模型已配置、供应商与 Key 可用，且模型名已加入该工作空间的白名单。 |
+| Embedding 显示「待重建」 | 用 WebUI 的「重建索引」重算向量；换模型后旧索引不再可用。 |
+| WebUI 未响应 | 检查 `docker compose ps`、`docker logs --tail 100 sirius-pulse-v2-test`，再检查 `8080` 与 AMKR 端口。 |
 | 构建提示空间不足 | 先检查 `df -h /` 和 `docker system df`；若已扩展 Hyper-V 磁盘，按本页的 LVM 扩容流程扩展根文件系统。 |
