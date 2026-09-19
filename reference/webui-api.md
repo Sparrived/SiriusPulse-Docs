@@ -22,7 +22,15 @@ WebUI API 路由集中定义在 `sirius_pulse/webui/routes.py`。
 
 `/api/persona/tokens`、`/api/persona/cognition`、`/api/persona/cognition/analysis`、`/api/persona/diary`、`/api/persona/vector-store-status`、`/api/persona/vector-store/rebuild`、`/api/persona/profile/*`、`/api/persona/memory-viz`、`/api/persona/conversations`。
 
+## 自主行为
+
+`/api/persona/autonomy` **只读**，返回她当前惦记的意图（`memory/intentions.json`）与自己做过的事（`memory/autonomy/episodes.json`），以及两者共用的 `summary`（未了意图数、累计自主数、最近一次时间）和文件路径。`limit` 可限制返回条数（1–200，默认 100），两类记录均按时间倒序。
+
+之所以没有写接口：从后台替她行动会让她变成"可配置"而不是"自主"。页面同样只读。
+
 ## WebSocket
 
 - `GET /ws/events`：订阅全部人格事件。
 - `GET /ws/events/{name}`：订阅指定人格事件。
+
+连接由 `webui/event_bridge.py` 供给内容：它订阅每个人格引擎的 `SessionEventBus`，把事件按人格广播给浏览器。`agent_turn_updated` 带 `data.origin` 区分来源——`self_initiated` 表示这是她自己发起的回合，自主行为页面据此实时显示。人格引擎被重建时会换成新的事件总线，桥按引擎身份重新订阅。
