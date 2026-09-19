@@ -1,6 +1,6 @@
 # 配置
 
-Sirius Pulse 的配置分为全局配置、Provider 配置、人格配置、模型编排配置、平台适配器配置和扩展配置。
+Sirius Pulse 的配置分为全局配置（含 AMKR 连接）、人格配置、任务编排配置、平台适配器配置和扩展配置。模型、供应商与采样参数不在本框架内配置——它们属于 AMKR。
 
 ## 全局配置
 
@@ -14,6 +14,10 @@ Sirius Pulse 的配置分为全局配置、Provider 配置、人格配置、模�
 | `napcat_install_dir` | NapCat 安装目录。 |
 | `log_level` | 日志级别。 |
 | `max_sentence_chars` | 回复切分相关的句子长度参考值。 |
+| `amkr_base_url` | AMKR 地址，默认 `http://127.0.0.1:8000`。 |
+| `amkr_local_api_key` | AMKR 本地授权 Key，同时也是 AMKR 面板的管理员凭据；WebUI API 只回显掩码。 |
+| `amkr_workspace` | 本应用在共享 AMKR 中的命名空间前缀，默认 `sirius-pulse`。 |
+| `amkr_ui_enabled` | WebUI 全局设置里的「启用 AMKR 自带 WebUI」开关。 |
 
 相关 API：`GET /api/global-config`、`POST /api/global-config`。
 
@@ -24,40 +28,58 @@ Sirius Pulse 的配置分为全局配置、Provider 配置、人格配置、模�
 | 文件 | 说明 |
 |---|---|
 | `persona.json` | 人格名称、人设、语气、性格等。 |
-| `orchestration.json` | 模型任务编排与回复策略。 |
+| `orchestration.json` | 人格级编排配置；模型与采样参数不在这里，见下方「任务编排配置」。 |
 | `adapters.json` | 平台适配器配置，例如 NapCat WebSocket。 |
 | `experience.json` | 背景经历和可编辑经验材料。 |
 | `persona.db` | 统一 SQLite 数据库，保存部分记忆、Token、认知和状态。 |
 
-## 编排配置
+## 任务编排配置
 
-代码模型位于 `sirius_pulse/config/models.py` 的 `OrchestrationPolicy`。
+模型选择、温度、最大 token 和故障切换都不在本框架内配置——这些属于 AMKR 的任务定义，请在 AMKR 自带面板里调整。Sirius Pulse 只保留**本地传输层**参数：
 
-常用字段：`unified_model`、`task_models`、`task_enabled`、`task_temperatures`、`task_max_tokens`、`task_retries`、`enable_prompt_driven_splitting`、`session_reply_mode`、`engagement_sensitivity`、`min_reply_interval_seconds`、`main_model_reply_cooldown_seconds`、`memory`。
+- `task_timeout`：按任务设置请求超时。
+- `task_retries`：按任务设置失败重试次数。
 
-相关 API：`GET /api/persona/orchestration`、`POST /api/persona/orchestration`、`GET /api/persona/task-params`、`POST /api/persona/task-params`。
+代码模型位于 `sirius_pulse/config/models.py` 的 `OrchestrationPolicy`，同时承载与模型无关的回复策略，例如 `task_enabled`、`enable_prompt_driven_splitting`、`engagement_sensitivity`、`min_reply_interval_seconds`、`main_model_reply_cooldown_seconds`、`memory`。旧的 `unified_model`、`task_models`、`task_temperatures`、`task_max_tokens` 已不再生效。
 
-## Provider 配置
+WebUI 不再提供模型编排页面，`/api/persona/orchestration` 与 `/api/persona/task-params` 端点已移除。
 
-`ProviderConfig` 字段：`name`、`provider_type`、`api_key`、`base_url`、`healthcheck_model`、`enabled`、`models`、`models_url`。
+## AMKR 连接配置
 
-其中 `name` 是全局唯一且可修改的 Provider 识别名称，模型配置通过 `name/model` 路由；相同 API 端点和平台类型的不同 Key 可通过不同名称并存。旧配置会在首次加载时自动补齐名称，冲突名称自动追加数字后缀。
+Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地 AMKR。全局配置中的四个键：
 
-相关 API：`GET /api/providers`、`POST /api/providers`、`POST /api/providers/probe`、`POST /api/providers/refresh-models`。
+| 字段 | 说明 |
+|---|---|
+| `amkr_base_url` | AMKR 地址，默认 `http://127.0.0.1:8000`。 |
+| `amkr_local_api_key` | AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同，可增删供应商与 Key，只保存在服务端；WebUI API 只回显掩码。 |
+| `amkr_workspace` | 本应用在共享 AMKR 中的命名空间前缀，默认 `sirius-pulse`。 |
+| `amkr_ui_enabled` | WebUI 全局设置里的「启用 AMKR 自带 WebUI」开关。 |
 
-### Provider 环境变量
+相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/models`（返回 12 个任务名作为可选模型）。
 
-快速测试或无 WebUI 配置时，可以通过启动进程的环境变量提供一个 Provider：
+### AMKR 环境变量
+
+环境变量优先于 `global_config.json`：
 
 | 变量 | 说明 |
 |---|---|
-| `SIRIUS_PROVIDER_TYPE` | Provider 类型，默认 `openai-compatible`。 |
-| `SIRIUS_API_KEY` | API 密钥；也可填写 `env:变量名` 或全大写变量名作为间接引用。 |
-| `SIRIUS_BASE_URL` | 可选的 OpenAI-compatible 服务地址。 |
-| `SIRIUS_MODEL` | 默认模型名，默认 `gpt-4o-mini`。 |
-| `SIRIUS_PROVIDER_NAME` | 可选的 Provider 标识名；未设置时使用 Provider 类型。 |
+| `SIRIUS_AMKR_BASE_URL` | 覆盖 `amkr_base_url`。 |
+| `SIRIUS_AMKR_API_KEY` | 覆盖 `amkr_local_api_key`；也可填写 `env:变量名` 或全大写变量名作为间接引用。 |
+| `SIRIUS_AMKR_WORKSPACE` | 覆盖 `amkr_workspace`。 |
 
-这些变量必须存在于实际启动 WebUI/Persona Worker 的进程环境中；仅写入 Compose `.env` 不会自动传入容器，Docker 部署须在 `environment` 或 `env_file` 中显式映射。生产环境优先使用 WebUI/ProviderRegistry 的持久化配置，并避免把密钥提交到仓库。
+旧的 `SIRIUS_PROVIDER_TYPE`、`SIRIUS_API_KEY`、`SIRIUS_BASE_URL`、`SIRIUS_MODEL`、`SIRIUS_PROVIDER_NAME` 已移除。
+
+这些变量必须存在于实际启动 WebUI/Persona Worker 的进程环境中；仅写入 Compose `.env` 不会自动传入容器，Docker 部署须在 `environment` 或 `env_file` 中显式映射。密钥不应提交到仓库。
+
+## 任务名契约
+
+AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段。内置 12 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`。
+
+`model` 命中任务名时，框架**不发送** `temperature` 与 `max_tokens`，由 AMKR 的任务定义决定；两边同时配置会被 AMKR 以 400 拒绝。
+
+隔离靠请求头 `X-AMKR-Workspace`：框架按人格拼接为 `<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`）。AMKR 是共享单实例，并非多租户。工作空间由「在里面建第一个任务」隐式产生，没有单独的创建步骤。
+
+注册策略是**只创建缺失的任务名**，已存在的任务不比对、不更新，后续调整全部在 AMKR 面板里完成。详见 [AMKR 接入配置参考](../reference/provider-config) 与 [AMKR 接入模块](../modules/provider-system)。
 
 ## 适配器配置
 

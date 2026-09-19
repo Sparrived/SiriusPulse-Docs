@@ -6,7 +6,7 @@
 
 ## 职责
 
-工具函数分布在 core、config、providers、webui 等目录，负责时间、JSON、响应解析、认证辅助、API 错误处理和文件写入等通用能力。
+工具函数分布在 core、config、providers（AMKR 接入）、webui 等目录，负责时间、JSON、响应解析、认证辅助、API 错误处理和文件写入等通用能力。
 
 ## 关键协作
 

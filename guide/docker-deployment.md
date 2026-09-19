@@ -8,7 +8,7 @@
 
 | 路径或端口 | 用途 |
 |---|---|
-| `./data:/app/data` | 人格、Provider、认证、记忆、日志和运行状态的持久化数据。 |
+| `./data:/app/data` | 人格、AMKR 连接配置、认证、记忆、日志和运行状态的持久化数据。 |
 | `./plugins:/app/plugins` | 宿主机维护的外部 Plugin submodule 和 `plugins/_config.json`；不进入镜像。 |
 | `/root/.cache/huggingface:/home/sirius/.cache/huggingface` | Embedding 模型缓存，更新镜像时不重复下载。 |
 | `/run/sirius-container-admin.sock` | 可选的 Docker 管理代理；未配置时绑定 `/dev/null`，不是 Docker Socket。 |
@@ -16,6 +16,14 @@
 | `127.0.0.1:18900` | 容器内 Embedding HTTP 服务，仅供主进程使用。 |
 
 不要执行 `docker compose down -v`，它会删除 Docker 卷；日常更新只使用下面的一条命令。
+
+## AMKR 前置依赖
+
+所有模型调用都发往 AMKR（见 [AMKR 接入配置参考](../reference/provider-config)），因此容器所在主机必须能访问它。Compose 使用 `network_mode: host`，容器内的 `http://127.0.0.1:8000` 就是宿主机的 `8000`，AMKR 按默认地址监听即可被直接访问；AMKR 应绑定 `127.0.0.1` 或内网地址，不要暴露到公网。
+
+若 AMKR 跑在另一台机器上，把 `amkr_base_url` 改成该地址，或在 Compose 的 `environment` 中显式映射 `SIRIUS_AMKR_BASE_URL` / `SIRIUS_AMKR_API_KEY` / `SIRIUS_AMKR_WORKSPACE`（环境变量优先于 `global_config.json`）。`.env` 只负责变量替换，不写进 `environment` 不会传入容器。
+
+部署后打开 WebUI 的「AMKR 运维」页确认 `reachable` 为真、各人格 `missing` 为空；缺失时点一次「注册任务名」。
 
 ## 外部 Plugin
 
@@ -28,7 +36,7 @@ bash scripts/update-container.sh
 
 官方 Compose 配置将宿主机 `./plugins` 以读写方式挂载到 `/app/plugins`，因此 WebUI 对插件启停和设置的修改会写入宿主机的 `plugins/_config.json`。Linux 宿主机请确保该目录允许镜像内 UID `10001` 写入；可按宿主机权限策略使用 ACL（例如 `sudo setfacl -R -m u:10001:rwX plugins`），同时保留宿主机 Git 用户对工作树的写权限，不要为了容器写入而把整个 Git 工作树改成 UID `10001` 所有。修改插件源码后通过 WebUI 的插件重载或重启容器使其生效。
 
-Plugin 声明的独立 Python 依赖由受信任的运行时生命周期处理；但 `httpx` 和 Playwright Python 包也是核心 Provider/通用渲染能力的共享依赖，因此仍在核心环境中。镜像在环境层安装共享 Chromium，不应因 GitHub Monitor 外移而删除；外部 Plugin 源码本身仍不会复制进镜像。
+Plugin 声明的独立 Python 依赖由受信任的运行时生命周期处理；但 `httpx` 和 Playwright Python 包也是核心 AMKR 接入/通用渲染能力的共享依赖，因此仍在核心环境中。镜像在环境层安装共享 Chromium，不应因 GitHub Monitor 外移而删除；外部 Plugin 源码本身仍不会复制进镜像。
 
 GitHub 仓库监控已迁为 `plugins/github_monitor` 外部 Plugin。官方 Compose 映射了文档示例变量 `SIRIUS_GITHUB_TOKEN_SIRIUS_PULSE` 和 `SIRIUS_GITHUB_WEBHOOK_SECRET`（默认空值）；只有 Plugin settings 的 `github_token_env` / `webhook_secret_env` 正好引用这些名称时才会读取它们。自定义变量名必须在不提交的 Compose override 中另行显式映射；`.env` 本身只做变量替换。完整 WebUI 设置、进程环境变量、Webhook 和持久状态要求见 [GitHub Monitor 外部 Plugin](../extensions/github-monitor)。
 
@@ -119,7 +127,7 @@ bash scripts/update-container.sh
 bash /root/SiriusPulse/scripts/update-container.sh
 ```
 
-脚本会快进拉取 `master`、更新 Git 子模块、验证 Compose 配置、构建镜像、强制重建主容器、清理已从 Compose 移除的孤立容器，并等待 WebUI 与内部 Embedding 健康。它不会执行 `down -v`，也不会删除 `data/`、认证信息、记忆、Provider 配置或 Hugging Face 模型缓存。
+脚本会快进拉取 `master`、更新 Git 子模块、验证 Compose 配置、构建镜像、强制重建主容器、清理已从 Compose 移除的孤立容器，并等待 WebUI 与内部 Embedding 健康。它不会执行 `down -v`，也不会删除 `data/`、认证信息、记忆、AMKR 连接配置或 Hugging Face 模型缓存。
 
 普通源码改动会复用现有 `sirius-pulse:latest` 的完整运行环境，只复制应用源码；Python 依赖、Playwright 系统库和 Chromium 都不会重新下载。更新脚本会比较 `uv.lock` 与 Dockerfile 环境键，任一变化或首次部署没有旧镜像时，才会回退到完整环境构建。若发现旧 `sirius-pulse-v2-test` 容器但没有 `data/`，脚本会停止并要求先执行首次迁移，避免以空目录启动并覆盖可用数据。
 
@@ -145,7 +153,7 @@ docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{print
 
 WebUI 管理员用户名为 `admin`。首次启动会生成随机密码并只在首次启动日志中显示；之后 `data/auth_secret.json` 仅保存密码哈希与 JWT 密钥，无法从文件还原明文密码。
 
-`data/` 还包含 Provider 密钥、人格配置和记忆数据。它已被 `.dockerignore` 排除，不能提交到 Git，也不应在排障时删除。遗失管理员密码时应通过受控的认证重置流程生成新密码，而不是修改或提交哈希文件。
+`data/` 还包含 AMKR 本地授权 Key、人格配置和记忆数据。它已被 `.dockerignore` 排除，不能提交到 Git，也不应在排障时删除。遗失管理员密码时应通过受控的认证重置流程生成新密码，而不是修改或提交哈希文件。
 
 ## 常见问题
 

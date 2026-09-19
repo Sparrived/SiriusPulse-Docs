@@ -18,19 +18,21 @@ python main.py persona activate default
 
 WebUI 也提供创建、启动、停止和切换人格的页面。
 
-## 3. 配置 Provider
+## 3. 连接 AMKR
 
-在 WebUI 的 Provider 页面添加模型服务。常见字段：
+Sirius Pulse 自身不再内置任何模型厂商实现，所有模型调用统一发往本地 [AMKR](https://github.com/Sparrived/auto-model-key-router)（`auto-model-key-router`，OpenAI 兼容路由）。请先跑起 AMKR，然后在 WebUI 的「全局设置」中填写：
 
-- `provider_type`：如 `openai_compatible`、`deepseek`、`siliconflow`、`aliyun_bailian`、`bigmodel`、`volcengine_ark`、`mimo`、`opencode`、`opencode_go`。
-- `api_key`：服务密钥。
-- `base_url`：OpenAI-compatible 服务地址或厂商地址。
-- `models`：可用模型列表。
-- `enabled`：是否启用。
+- `amkr_base_url`：AMKR 地址，默认 `http://127.0.0.1:8000`。
+- `amkr_local_api_key`：AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同。
+- `amkr_workspace`：本应用在共享 AMKR 中的命名空间前缀，默认 `sirius-pulse`。
 
-## 4. 配置人格模型编排
+## 4. 注册任务名并配置模型
 
-在人格编排配置中选择 `unified_model` 或按任务配置 `task_models`、`task_temperatures`、`task_max_tokens`、`task_retries`。
+Sirius Pulse 用**任务名**代替模型名：它把 `response_generate`、`memory_extract` 这类任务名直接填进请求的 `model` 字段，由 AMKR 查表换成真实模型。内置 12 个任务名。
+
+到 WebUI 的「AMKR 运维」页查看连通性与各人格的 `registered` / `missing`，点一次「注册任务名」即可补齐缺失项。注册是只创建、不修改：已存在的任务一律不动。
+
+模型选择、温度、最大 token 和故障切换都在 AMKR 自带面板里按任务配置，Sirius Pulse 内没有模型或参数编辑入口。页面上还提供跳转 AMKR 面板的外链。
 
 ## 5. 接入 QQ
 
@@ -51,4 +53,4 @@ NapCat 适配器示例：
 ## 6. 查看运行状态
 
 - WebUI 仪表盘：人格状态、Token、日志和健康检查。
-- API：`GET /api/monitoring/health`、`GET /api/persona/status`。
+- API：`GET /api/monitoring/health`、`GET /api/persona/status`、`GET /api/amkr/status`。

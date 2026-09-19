@@ -9,7 +9,7 @@ python -m isort --check-only sirius_pulse tests
 
 ## 修改原则
 
-- Provider 逻辑放在 `sirius_pulse/providers/`。
+- AMKR 接入逻辑放在 `sirius_pulse/providers/`；厂商、Key 池与采样参数属于 AMKR，不要在本框架内重新引入。
 - 平台逻辑放在 `sirius_pulse/platforms/`。
 - WebUI 路由先更新 `sirius_pulse/webui/routes.py`。
 - 新增 Tool 或 Plugin 时同步扩展文档。

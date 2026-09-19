@@ -4,7 +4,7 @@
 
 - Python 3.12 或更高版本。
 - Windows、macOS 或 Linux；当前仓库包含 `start.pyw`，更偏向 Windows 桌面双击启动场景。
-- 可访问所需模型 Provider 的网络环境。
+- 可访问本地 AMKR 实例的网络环境；Sirius Pulse 所有模型调用都发往 AMKR，需要先把它跑起来。
 - 如需 QQ 接入，需要本地或远端 NapCat OneBot v11 WebSocket 服务。
 
 ## 获取代码
@@ -15,7 +15,7 @@ cd SiriusPulse
 git submodule update --init --recursive
 ```
 
-外部插件独立维护在 [SiriusPulse-Plugins](https://github.com/Sparrived/SiriusPulse-Plugins)，作为宿主机项目根目录的 `plugins/` submodule 使用。`plugins/` 是独立维护的外部 Plugin 目录，其中可包含 `github_monitor`、`amkr_key_manager`、`sub2api_monitor` 等扩展，实际目录以固定的子模块版本为准。`github_monitor` 不属于核心包、PyPI 分发或 `sirius_pulse/tools/builtin/`；源码和 `plugins/_config.json` 留在宿主机，Docker 部署时由 Compose 挂载到 `/app/plugins`，不会进入核心镜像。详见 [GitHub Monitor 外部 Plugin](../extensions/github-monitor)。
+外部插件独立维护在 [SiriusPulse-Plugins](https://github.com/Sparrived/SiriusPulse-Plugins)，作为宿主机项目根目录的 `plugins/` submodule 使用。`plugins/` 是独立维护的外部 Plugin 目录，其中可包含 `github_monitor`、`sub2api_monitor` 等扩展，实际目录以固定的子模块版本为准。`github_monitor` 不属于核心包、PyPI 分发或 `sirius_pulse/tools/builtin/`；源码和 `plugins/_config.json` 留在宿主机，Docker 部署时由 Compose 挂载到 `/app/plugins`，不会进入核心镜像。详见 [GitHub Monitor 外部 Plugin](../extensions/github-monitor)。
 
 ### Sub2API 多站监控准备
 

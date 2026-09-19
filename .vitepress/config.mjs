@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   lang: 'zh-CN',
   title: 'Sirius Pulse',
-  description: '异步角色扮演聊天框架 — 支持多人格、多平台、多模型',
+  description: '异步角色扮演聊天框架 — 支持多人格、多平台、AMKR 统一模型接入',
 
   lastUpdated: true,
   cleanUrls: true,
@@ -72,7 +72,7 @@ export default defineConfig({
           items: [
             { text: '全局配置', link: '/reference/global-config' },
             { text: '人格配置', link: '/reference/persona-config' },
-            { text: 'Provider 配置', link: '/reference/provider-config' },
+            { text: 'AMKR 接入配置', link: '/reference/provider-config' },
           ],
         },
         {

@@ -4,12 +4,12 @@
 
 ## 当前结论
 
-Sirius Pulse 已形成清晰的本地多进程架构：WebUI 作为管理面，人格 worker 作为运行单元，`EngineRuntime` 把平台适配器和核心引擎连接起来，Provider / Memory / Tools / Plugins 分别承担模型、记忆、工具和用户命令扩展职责。
+Sirius Pulse 已形成清晰的本地多进程架构：WebUI 作为管理面，人格 worker 作为运行单元，`EngineRuntime` 把平台适配器和核心引擎连接起来，AMKR 接入 / Memory / Tools / Plugins 分别承担模型调用、记忆、工具和用户命令扩展职责。模型供应商、Key 池与采样参数已整体下沉到外部 AMKR，本框架只发送任务名。
 
 ## 优点
 
 - 人格运行隔离，便于重启和故障隔离。
-- Provider 抽象相对集中，厂商接入不会污染核心引擎。
+- AMKR 接入层极薄：只有一个 `OpenAICompatibleProvider` 与任务名注册/巡检，厂商逻辑不再有机会污染核心引擎。
 - Tools 与 Plugins 分工明确，模型工具和用户命令没有混在一起。
 - WebUI 路由集中在 `routes.py`，便于生成 API 文档和检查覆盖。
 

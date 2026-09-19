@@ -1,6 +1,6 @@
 # 系统架构全景
 
-Sirius Pulse 由 CLI、WebUI、人格子进程、平台适配器、对话引擎、Provider、记忆、Tools 和 Plugins 组成。
+Sirius Pulse 由 CLI、WebUI、人格子进程、平台适配器、对话引擎、AMKR 接入层、记忆、Tools 和 Plugins 组成。所有模型调用统一发往外部的本地 AMKR 服务。
 
 ```mermaid
 flowchart TD
@@ -14,7 +14,11 @@ flowchart TD
   Adapter <--> QQ["QQ / OneBot WebSocket"]
   Engine --> Pipeline["Pipeline 五阶段处理"]
   Pipeline --> Brain["Brain / LLM 调用"]
-  Brain --> Providers["Provider 路由"]
+  Brain --> Providers["OpenAICompatibleProvider"]
+  Providers --> AMKR["AMKR 本地路由（供应商 / Key 池 / 采样参数）"]
+  AMKR --> Models["真实模型"]
+  WebUI --> Sync["AMKR 任务注册与巡检"]
+  Sync --> AMKR
   Pipeline --> Memory["记忆系统"]
   Pipeline --> Tools["Tools 工具调用"]
   Pipeline --> Plugins["Plugins 用户指令"]
@@ -32,7 +36,7 @@ flowchart TD
 | 目录 | 职责 |
 |---|---|
 | `sirius_pulse/core/` | 对话引擎、管线、Prompt、事件、回复策略、持久化与后台任务。 |
-| `sirius_pulse/providers/` | LLM Provider 抽象、具体厂商实现、模型路由与模型列表。 |
+| `sirius_pulse/providers/` | 唯一的 LLM 边界：`OpenAICompatibleProvider` 指向 AMKR，`amkr.py` 解析连接配置，`amkr_sync.py` 注册任务名。没有厂商实现与本地路由注册表。 |
 | `sirius_pulse/platforms/` | 具体平台适配器，目前包含 NapCat OneBot v11。 |
 | `sirius_pulse/adapters/` | 平台无关消息模型和基础适配器抽象。 |
 | `sirius_pulse/memory/` | 基础记忆、语义画像、日记、记忆单元、术语和用户档案。 |

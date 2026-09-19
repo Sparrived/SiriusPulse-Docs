@@ -29,4 +29,4 @@ Sirius Pulse 当前内置 QQ 平台实现：`sirius_pulse/platforms/onebot_v11/n
 
 ## 常见问题
 
-连接失败时检查 `ws_url`、NapCat WebSocket、防火墙和 token。群里不回复时检查人格是否运行、适配器是否启用、群白名单、回复冷却和 Provider 调用日志。
+连接失败时检查 `ws_url`、NapCat WebSocket、防火墙和 token。群里不回复时检查人格是否运行、适配器是否启用、群白名单、回复冷却、AMKR 连通性与任务注册状态（WebUI「AMKR 运维」页），以及模型调用日志。

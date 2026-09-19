@@ -4,7 +4,7 @@
 
 - [全局配置](./global-config)
 - [人格配置](./persona-config)
-- [Provider 配置](./provider-config)
+- [AMKR 接入配置](./provider-config)
 
 ## API 参考
 

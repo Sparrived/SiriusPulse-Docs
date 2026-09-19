@@ -9,7 +9,7 @@
 
 Plugin 是用户显式触发的扩展系统，支持命令装饰器、命令解析、权限、事件、调度、执行和多种渲染模式。
 
-Plugin 与 Tool 应保持各自独立的注册、执行和返回契约，同时可以共享稳定的底层能力服务，例如数据存储、后台任务、主动消息、Webhook/事件订阅、重试、遥测和 Secret 脱敏。外部 Plugin 可包含 `github_monitor`、`amkr_key_manager`、`sub2api_monitor` 等扩展，实际目录以子模块版本为准；其中 `github_monitor` 已从内置 Tool 迁出，见 [GitHub Monitor 外部 Plugin](../extensions/github-monitor)。
+Plugin 与 Tool 应保持各自独立的注册、执行和返回契约，同时可以共享稳定的底层能力服务，例如数据存储、后台任务、主动消息、Webhook/事件订阅、重试、遥测和 Secret 脱敏。外部 Plugin 可包含 `github_monitor`、`sub2api_monitor` 等扩展，实际目录以子模块版本为准；其中 `github_monitor` 已从内置 Tool 迁出，见 [GitHub Monitor 外部 Plugin](../extensions/github-monitor)。
 
 ## 关键协作
 
