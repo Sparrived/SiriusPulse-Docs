@@ -19,11 +19,13 @@
 
 ## AMKR 前置依赖
 
-所有模型调用都发往 AMKR（见 [AMKR 接入配置参考](../reference/provider-config)），因此容器所在主机必须能访问它。Compose 使用 `network_mode: host`，容器内的 `http://127.0.0.1:8000` 就是宿主机的 `8000`，AMKR 按默认地址监听即可被直接访问；AMKR 应绑定 `127.0.0.1` 或内网地址，不要暴露到公网。
+所有模型调用都发往 AMKR（见 [AMKR 接入配置参考](../reference/provider-config)），因此容器所在主机必须能访问它。Compose 使用 `network_mode: host`，容器内的 `http://127.0.0.1:8000` 就是宿主机的 `8000`。AMKR 应绑定 `127.0.0.1` 或内网地址，不要暴露到公网。
 
-若 AMKR 跑在另一台机器上，把 `amkr_base_url` 改成该地址，或在 Compose 的 `environment` 中显式映射 `SIRIUS_AMKR_BASE_URL` / `SIRIUS_AMKR_API_KEY` / `SIRIUS_AMKR_WORKSPACE`（环境变量优先于 `global_config.json`）。`.env` 只负责变量替换，不写进 `environment` 不会传入容器。
+若 AMKR 跑在另一台机器上，或宿主机的 `8000` 已被别的服务占用（此时 AMKR 往往被映射到别的端口，如 `127.0.0.1:28881`），把 `amkr_base_url` 改成实际可达的地址，或在 Compose 的 `environment` 中显式映射 `SIRIUS_AMKR_BASE_URL` / `SIRIUS_AMKR_API_KEY` / `SIRIUS_AMKR_WORKSPACE` / `SIRIUS_AMKR_PUBLIC_URL`（环境变量优先于 `global_config.json`）。`.env` 只负责变量替换，不写进 `environment` 不会传入容器。
 
-部署后打开 WebUI 的「AMKR 运维」页确认 `reachable` 为真、各人格 `missing` 为空；缺失时点一次「注册任务名」。
+**注意区分两个地址**：`amkr_base_url` 是容器怎么连 AMKR，`amkr_public_url` 是**用户浏览器**怎么连它。面板与运维页外链都由浏览器直接访问 AMKR，因此只要不是从部署机本机打开 WebUI，就必须把 `amkr_public_url` 设成浏览器可达的地址（通常是反代域名）。反代必须让面板与接口同源——AMKR 不发 CORS 头。
+
+部署后打开 WebUI 的「AMKR 运维」页确认 `reachable` 为真、各人格 `missing` 为空；缺失时点一次「注册任务名」。该页也可就地嵌入所选人格的工作空间面板。
 
 ## 外部 Plugin
 

@@ -46,16 +46,19 @@ WebUI 不再提供模型编排页面，`/api/persona/orchestration` 与 `/api/pe
 
 ## AMKR 连接配置
 
-Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地 AMKR。全局配置中的四个键：
+Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地 AMKR。全局配置中的键：
 
 | 字段 | 说明 |
 |---|---|
-| `amkr_base_url` | AMKR 地址，默认 `http://127.0.0.1:8000`。 |
+| `amkr_base_url` | AMKR 地址，**供服务端进程访问**，默认 `http://127.0.0.1:8000`。 |
 | `amkr_local_api_key` | AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同，可增删供应商与 Key，只保存在服务端；WebUI API 只回显掩码。 |
 | `amkr_workspace` | 本应用在共享 AMKR 中的命名空间前缀，默认 `sirius-pulse`。 |
+| `amkr_public_url` | AMKR 地址，**供用户浏览器访问**（运维页外链与内嵌面板）；留空表示与 `amkr_base_url` 相同。 |
 | `amkr_ui_enabled` | WebUI 全局设置里的「启用 AMKR 自带 WebUI」开关。 |
 
-相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/models`（返回 12 个任务名作为可选模型）。
+`amkr_base_url` 与 `amkr_public_url` 在同机部署下必须分开：容器走回环最省事，但回环在用户浏览器里指向用户自己的机器；面板由浏览器直连 AMKR 取数，因此远程访问必须填写 `amkr_public_url`（通常是反代域名，且需与面板同源）。
+
+相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（建出工作空间并补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/amkr/panel?persona=...`（仅管理员，返回可嵌入的面板地址）、`GET /api/models`（返回 12 个任务名作为可选模型）。
 
 ### AMKR 环境变量
 
@@ -66,6 +69,7 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 | `SIRIUS_AMKR_BASE_URL` | 覆盖 `amkr_base_url`。 |
 | `SIRIUS_AMKR_API_KEY` | 覆盖 `amkr_local_api_key`；也可填写 `env:变量名` 或全大写变量名作为间接引用。 |
 | `SIRIUS_AMKR_WORKSPACE` | 覆盖 `amkr_workspace`。 |
+| `SIRIUS_AMKR_PUBLIC_URL` | 覆盖 `amkr_public_url`。 |
 
 旧的 `SIRIUS_PROVIDER_TYPE`、`SIRIUS_API_KEY`、`SIRIUS_BASE_URL`、`SIRIUS_MODEL`、`SIRIUS_PROVIDER_NAME` 已移除。
 

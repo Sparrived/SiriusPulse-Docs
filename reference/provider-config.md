@@ -8,12 +8,24 @@ Sirius Pulse 不再有 Provider 注册表。所有模型调用都发往本地 [A
 
 | 字段 | 默认值 | 说明 |
 |---|---|---|
-| `amkr_base_url` | `http://127.0.0.1:8000` | AMKR 地址。请求发往 `<base_url>/v1/chat/completions`。 |
+| `amkr_base_url` | `http://127.0.0.1:8000` | AMKR 地址，**供本框架的服务端进程访问**。请求发往 `<base_url>/v1/chat/completions`。 |
 | `amkr_local_api_key` | 空 | AMKR 的本地授权 Key，**与 AMKR 自带面板的管理员凭据是同一个**，可增删供应商与 Key，因此只保存在服务端。 |
 | `amkr_workspace` | `sirius-pulse` | 本应用在共享 AMKR 中的命名空间前缀。 |
+| `amkr_public_url` | 空 | AMKR 地址，**供用户的浏览器访问**（运维页外链与内嵌面板）。留空表示与 `amkr_base_url` 相同。见下方「两个地址」。 |
 | `amkr_ui_enabled` | `true` | WebUI 全局设置里的「启用 AMKR 自带 WebUI」开关。 |
 
-`amkr_local_api_key` 在 WebUI API 响应中被脱敏为 `sk-a****`；提交脱敏值时服务端保留磁盘上的原值，不会把掩码写回配置。
+`amkr_local_api_key` 在 WebUI API 响应中被脱敏为 `sk-a****`；提交脱敏值时服务端保留磁盘上的原值，不会把掩码写回配置。`amkr_panel_keys`（工作空间面板 key 映射）则整字段都不回显。
+
+### 两个地址：服务端 vs 浏览器
+
+`amkr_base_url` 是**容器/服务端**怎么连 AMKR，`amkr_public_url` 是**用户浏览器**怎么连同一个 AMKR。两者在同机部署下必然不同：
+
+- 容器与 AMKR 同机时，服务端走回环最省事（`http://127.0.0.1:8000`），但回环地址在用户浏览器里指向**用户自己的机器**，外链与面板 iframe 都会直接失败；
+- AMKR 的 WebUI 通常由反向代理暴露在另一个域名（如 `https://amkr.sparrived.xyz`），浏览器必须用那个域名。
+
+面板是**浏览器直连 AMKR** 取数据的（不由本框架代理），因此只要不是从部署机本机打开运维页，就必须填写 `amkr_public_url`。留空则回落到 `amkr_base_url`，单机场景无需改动。
+
+> 反代必须让面板与接口**同源**：AMKR 不发送任何 CORS 头，跨源直连会被浏览器同源策略挡下。把 AMKR 挂在自己域名下的一个路径（nginx/Caddy 反代），而不要指望跨源。
 
 环境变量优先于配置文件：
 
@@ -22,6 +34,7 @@ Sirius Pulse 不再有 Provider 注册表。所有模型调用都发往本地 [A
 | `SIRIUS_AMKR_BASE_URL` | `amkr_base_url` |
 | `SIRIUS_AMKR_API_KEY` | `amkr_local_api_key` |
 | `SIRIUS_AMKR_WORKSPACE` | `amkr_workspace` |
+| `SIRIUS_AMKR_PUBLIC_URL` | `amkr_public_url` |
 
 `amkr_local_api_key` 还支持间接写法：`env:变量名`，或「全大写且不含空格的名字」也会先当作环境变量名解析，取不到再按字面量处理。
 
