@@ -71,6 +71,14 @@
 
 `tell` 的投递是机械的：内容（`what`）和目标（`audience`）在意图形成时就定了，投递一次即 `shared_at` 标记，**不会重复说第二遍**。分享另有独立的节奏限制（`share_cooldown_seconds`），并通过既有主动消息管线发送，因此白名单、投递确认和 `event_id` 幂等都由框架保证。
 
+### 夜里可以做事，但不能发出去
+
+本地（中国）时间 **23:00 到次日 08:00** 之间，`autonomy` 只做一件事：不发。夜里发出去的消息，对方最早也要第二天才读到，而且多半是反感多于惊喜，所以静默期只拦**投递**，不拦**做事**——她照样可以读、可以写、可以想，只有那条要发出去的话在等。
+
+等待不等于取消：被静默期拦下的意图**保持待发状态**，也**不会**被写成已说，天亮后（08:00 起）原样发出去，一个字都不改。这里刻意不消耗 `share_cooldown_seconds`，否则每晚的拦截都会把第二天的节奏也一起吃掉。
+
+判定按固定 UTC+8（中国无夏令时），与 `tools/cron_tasks.py` 的本地时间口径一致，不依赖系统时区。
+
 `intend_pursue` 与 `intend_share` 是仅有的两个对模型可见的自主相关 Tool，分别对应 `do` 和 `tell`。两者都只**登记**、绝不立即执行：`intend_pursue` 记下"我想弄明白什么、为什么在意"，`intend_share` 记下"我想说什么、说给谁"。登记不等于行动——她这次回复里已经在做的事（已经读过的链接、已经查过的资料）不该再登记一遍。
 
 `intend_pursue` 的 `kind` 是自由标签（`reading` / `building` / `note` / `musing`，缺省 `musing`），`urgency` 决定它多快被推进。`intend_share` 也可以带上 `intention_id` 给一条"还没想好说给谁"的旧意图补上受众，而不是重复登记同样的内容。受众候选来自确实可达的会话（活跃群 + 已配置的主人私聊），不可达的目标不会出现在候选里，避免意图指向一个发不出去的地方而永远悬着。
@@ -83,7 +91,13 @@
 
 自主回合内会拒绝一切 `external_write` / `destructive` 类工具，因此她不能在做事的当口顺手往群里发消息；说与做始终是两个决定。豁免的是两个只做登记的 Tool：`intend_share`（决定"这条没想好受众的话说给谁"）与 `intend_pursue`。后者同样必须豁免——自由时间正是她**唯一**能自己起头做一件事的时刻，如果那时不能把冒出来的新念头记下来，每开一条线索都会在回合结束时断掉，她也就只剩别人的消息这一个持久来源了。真正防止链条失控的不是这个开关，而是意图仍要各自过 `autonomy` 的闸门与尝试上限才会花掉一次调用。
 
-WebUI 的 `autonomy` 配置表单有三项：`check_interval_seconds`（心跳多久检查一次，最少 60 秒）、`share_cooldown_seconds`（两次主动分享之间的最小间隔）与 `free_time_interval_seconds`（无事惦记且长时间没人找她时，隔多久给一段空白的自主时间；默认 10800，设 0 表示关闭、退回纯意图闸门）。配置与 `_enabled` 一起保存在 `{persona}/tool_data/autonomy.json`；`share_cooldown_seconds` 与 `free_time_interval_seconds` 每次心跳都会重新读取，`check_interval_seconds` 在人格重启后生效。自主回合使用独立的 `autonomy_generate` 任务名，因此不会占用也不会触发正常回复的冷却。
+WebUI 的 `autonomy` 配置表单有三项：`check_interval_seconds`（心跳多久检查一次，最少 60 秒）、`share_cooldown_seconds`（两次主动分享之间的最小间隔）与 `free_time_interval_seconds`（无事惦记且长时间没人找她时，隔多久给一段空白的自主时间；默认 3600，设 0 表示关闭、退回纯意图闸门）。配置与 `_enabled` 一起保存在 `{persona}/tool_data/autonomy.json`；`share_cooldown_seconds` 与 `free_time_interval_seconds` 每次心跳都会重新读取，`check_interval_seconds` 在人格重启后生效。自主回合使用独立的 `autonomy_generate` 任务名，因此不会占用也不会触发正常回复的冷却。夜间静默期不是配置项，而是固定的礼貌约束。
+
+### 作用域：按人格，不按群
+
+这些节奏与状态全部是**人格级**的，不是群级的：配置存在 `{persona}/tool_data/autonomy.json`，意图与产出存在 `{persona}/memory/`，`last_share_at` 与 `last_free_time_at` 也是这个人格的一份时间戳。群只在单条意图上以 `origin_group` / `audience` 出现——那是**她自己挑的收件人**，不是判定作用域。
+
+两个直接推论：其一，同一人格在任何群里的自主行为共享同一份节奏，所以给 A 群发了一条，`share_cooldown_seconds` 对 B 群同样生效；其二，新加一个群不会让她更活跃，只会让她多一个可以说给谁听的候选。多人格并存时各自独立计时、互不影响。
 
 ### 没有每日配额
 
