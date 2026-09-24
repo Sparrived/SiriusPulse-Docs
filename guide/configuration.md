@@ -53,12 +53,14 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 | `amkr_base_url` | AMKR 地址，**供服务端进程访问**，默认 `http://127.0.0.1:8000`。 |
 | `amkr_local_api_key` | AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同，可增删供应商与 Key，只保存在服务端；WebUI API 只回显掩码。**只用于管理操作**（建空间、注册任务名），不用于模型调用。 |
 | `amkr_workspace` | 本应用在共享 AMKR 中的命名空间前缀，默认 `sirius-pulse`。 |
-| `amkr_public_url` | AMKR 地址，**供用户浏览器访问**（运维页外链与内嵌面板）；留空表示与 `amkr_base_url` 相同。 |
+| `amkr_public_url` | AMKR 地址，**供用户浏览器访问**（运维页外链与内嵌面板）；留空且 `amkr_base_url` 为回环时走本框架的同源反代 `/amkr/`。 |
 | `amkr_ui_enabled` | WebUI 全局设置里的「启用 AMKR 自带 WebUI」开关。 |
 | `amkr_panel_keys` | `{工作空间: 面板 key}`，建空间时自动写入，用于嵌入式面板；整字段不回显。 |
 | `amkr_inference_keys` | `{工作空间: 推理 key}`，建空间时自动写入，**模型调用用它**；整字段不回显。 |
 
-`amkr_base_url` 与 `amkr_public_url` 在同机部署下必须分开：容器走回环最省事，但回环在用户浏览器里指向用户自己的机器；面板由浏览器直连 AMKR 取数，因此远程访问必须填写 `amkr_public_url`（通常是反代域名，且需与面板同源）。
+`amkr_base_url` 与 `amkr_public_url` 的区别在于**谁来访问**。容器走回环最省事，但回环在用户浏览器里指向用户自己的机器；同机部署下由本框架在 `/amkr/` 上做同源反代（面板地址变成相对路径 `/amkr/ui/panel.html#k=…`），因此无需给 AMKR 单独配域名。只有 AMKR 在别的机器上、且浏览器能直连它时，才需要填写 `amkr_public_url`。
+
+反代只放行面板需要的路径且不注入密钥——面板用自己的面板 key（在 URL fragment 里）取数，详见[两个地址](/reference/provider-config#两个地址-服务端-vs-浏览器)。
 
 相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（建出工作空间并补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/amkr/panel?persona=...`（仅管理员，返回可嵌入的面板地址）、`GET /api/models`（返回 12 个任务名作为可选模型）。
 

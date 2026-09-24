@@ -11,7 +11,7 @@ Sirius Pulse 不再有 Provider 注册表。所有模型调用都发往本地 [A
 | `amkr_base_url` | `http://127.0.0.1:8000` | AMKR 地址，**供本框架的服务端进程访问**。请求发往 `<base_url>/v1/chat/completions`。 |
 | `amkr_local_api_key` | 空 | AMKR 的本地授权 Key，**与 AMKR 自带面板的管理员凭据是同一个**，可增删供应商与 Key，因此只保存在服务端。**只用于管理操作**（建空间、注册任务名），不用于模型调用。 |
 | `amkr_workspace` | `sirius-pulse` | 本应用在共享 AMKR 中的命名空间前缀。 |
-| `amkr_public_url` | 空 | AMKR 地址，**供用户的浏览器访问**（运维页外链与内嵌面板）。留空表示与 `amkr_base_url` 相同。见下方「两个地址」。 |
+| `amkr_public_url` | 空 | AMKR 地址，**供用户的浏览器访问**（运维页外链与内嵌面板）。留空且 `amkr_base_url` 为回环时走本框架的同源反代 `/amkr/`。见下方「两个地址」。 |
 | `amkr_ui_enabled` | `true` | WebUI 全局设置里的「启用 AMKR 自带 WebUI」开关。 |
 | `amkr_panel_keys` | `{}` | `{工作空间: 面板 key}`（`amkr_ws_…`），建空间时自动写入。用于嵌入式面板。 |
 | `amkr_inference_keys` | `{}` | `{工作空间: 推理 key}`（`amkr_ik_…`），建空间时自动写入。**模型调用用的就是它。** |
@@ -45,14 +45,24 @@ WebUI 的「AMKR 运维」页也提供这个按钮（标在缺凭据的人格上
 
 ### 两个地址：服务端 vs 浏览器
 
-`amkr_base_url` 是**容器/服务端**怎么连 AMKR，`amkr_public_url` 是**用户浏览器**怎么连同一个 AMKR。两者在同机部署下必然不同：
+`amkr_base_url` 是**容器/服务端**怎么连 AMKR，`amkr_public_url` 是**用户浏览器**怎么连同一个 AMKR：
 
 - 容器与 AMKR 同机时，服务端走回环最省事（`http://127.0.0.1:8000`），但回环地址在用户浏览器里指向**用户自己的机器**，外链与面板 iframe 都会直接失败；
-- AMKR 的 WebUI 通常由反向代理暴露在另一个域名（如 `https://amkr.sparrived.xyz`），浏览器必须用那个域名。
+- AMKR 在**别的机器**上、且浏览器能直连它时，把 `amkr_public_url` 填成那个浏览器可达的地址（通常是反代域名）。
 
-面板是**浏览器直连 AMKR** 取数据的（不由本框架代理），因此只要不是从部署机本机打开运维页，就必须填写 `amkr_public_url`。留空则回落到 `amkr_base_url`，单机场景无需改动。
+两者都留空、或 `amkr_base_url` 本身就是回环（`127.0.0.1` / `localhost` / `::1`）时，面板走**本框架自己的同源反代路径 `/amkr/`**，无需任何外部配置：
 
-> 反代必须让面板与接口**同源**：AMKR 不发送任何 CORS 头，跨源直连会被浏览器同源策略挡下。把 AMKR 挂在自己域名下的一个路径（nginx/Caddy 反代），而不要指望跨源。
+```
+浏览器 ──► https://<本框架域名>/amkr/ui/panel.html#k=<面板 key>
+                    │
+                    └─ 反代剥掉 /amkr 前缀 ──► http://127.0.0.1:8000/ui/panel.html
+```
+
+这条路径由 WebUI 直接提供（`sirius_pulse/webui/amkr_proxy.py`），因此**同机部署不需要给 AMKR 单独申请域名或证书**。面板能适配子路径是因为 AMKR 的 `apiBase()` 从 `location.pathname` 里截取 `/ui/` 之前的前缀，于是它会把请求发到 `/amkr/api/...`。
+
+反代**不注入任何密钥**，透传浏览器带来的 `Authorization`：面板从 URL fragment 取自己的**面板 key**（`#k=amkr_ws_…`）并逐条请求带上，所以面板天然免输入，且拿到的只是一把只对自己空间有效的受限凭据。反过来，若在反代里替浏览器注入 `amkr_local_api_key`，就等于开出一条**无需本框架认证即可管理整个 AMKR** 的同源路径。因此该路径只放行面板用得到的 `/ui/*`、`/health` 与 `/api/tasks`，其余（`/api/providers`、`/api/settings`、`/api/logs`、`/docs` 等）一律 `403`——管理面请直接访问 AMKR 自身地址并携带管理员 key。
+
+> 自己动手反代的话也必须让面板与接口**同源**：AMKR 不发送任何 CORS 头，跨源直连会被浏览器同源策略挡下。把 AMKR 挂在自己域名下的一个路径（nginx/Caddy 反代），而不要指望跨源。
 
 环境变量优先于配置文件：
 

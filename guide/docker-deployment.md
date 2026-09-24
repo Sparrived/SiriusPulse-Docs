@@ -21,7 +21,9 @@
 
 若 AMKR 跑在另一台机器上，或宿主机的 `8000` 已被别的服务占用（此时 AMKR 往往被映射到别的端口，如 `127.0.0.1:28881`），把 `amkr_base_url` 改成实际可达的地址，或在 Compose 的 `environment` 中显式映射 `SIRIUS_AMKR_BASE_URL` / `SIRIUS_AMKR_API_KEY` / `SIRIUS_AMKR_WORKSPACE` / `SIRIUS_AMKR_PUBLIC_URL`（环境变量优先于 `global_config.json`）。`.env` 只负责变量替换，不写进 `environment` 不会传入容器。
 
-**注意区分两个地址**：`amkr_base_url` 是容器怎么连 AMKR，`amkr_public_url` 是**用户浏览器**怎么连它。面板与运维页外链都由浏览器直接访问 AMKR，因此只要不是从部署机本机打开 WebUI，就必须把 `amkr_public_url` 设成浏览器可达的地址（通常是反代域名）。反代必须让面板与接口同源——AMKR 不发 CORS 头。
+**注意区分两个地址**：`amkr_base_url` 是容器怎么连 AMKR，`amkr_public_url` 是**用户浏览器**怎么连它。同机部署（AMKR 也在这台机器上、只绑回环）时**不必填** `amkr_public_url`：WebUI 会在自己的域名下把 AMKR 反代到 `/amkr/`，面板地址因此是个相对路径，浏览器按当前页面的源解析，天然与取数接口同源。只有 AMKR 在别的机器上、且浏览器能直连它时，才需要把 `amkr_public_url` 设成那个地址。
+
+反代不注入密钥，只放行面板需要的 `/ui/*`、`/health` 与 `/api/tasks`；它同时免本框架的 JWT（iframe 里是另一个文档，带的是 AMKR 的面板 key）。AMKR 的管理台请直接访问 AMKR 自身地址。
 
 部署后打开 WebUI 的「AMKR 运维」页确认 `reachable` 为真、各人格 `missing` 为空；缺失时点一次「注册任务名」。该页也可就地嵌入所选人格的工作空间面板。
 

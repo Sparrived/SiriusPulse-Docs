@@ -68,9 +68,13 @@ curl -X POST http://127.0.0.1:8080/api/amkr/rotate-inference-key \
 <ui_url>/panel.html#k=<面板 key>
 ```
 
-凭据必须在 **fragment** 里：fragment 不会被浏览器发给服务端，因此既不进 `Referer`，也不进 AMKR 或任何反向代理的访问日志。运维页按需取该地址再塞进 iframe；AMKR 未设 `X-Frame-Options` 与 CSP `frame-ancestors`，嵌入是它设计的用法。
+`ui_url` 默认是**本框架自己源上的反代路径** `/amkr/ui`（见下）。凭据必须在 **fragment** 里：fragment 不会被浏览器发给服务端，因此既不进 `Referer`，也不进 AMKR 或任何反向代理的访问日志。运维页按需取该地址再塞进 iframe；AMKR 未设 `X-Frame-Options` 与 CSP `frame-ancestors`，嵌入是它设计的用法。
 
-注意 AMKR **不发 CORS 头**：若面板页与接口不同源，浏览器会挡下请求。远程访问应把 AMKR 挂到同一域名下的路径（反向代理），而不是期待跨源直连。
+AMKR **不发 CORS 头**，因此面板页与它所调的接口必须同源。同机部署（`amkr_base_url` 为回环、`amkr_public_url` 留空）下，WebUI 自己在 `/amkr/` 上做这个反代（`webui/amkr_proxy.py`）：剥掉 `/amkr` 前缀转发给 AMKR，并改写上游的绝对跳转。面板因此与运维页同源，不必再给它配域名或证书。
+
+反代**不注入密钥**，透传浏览器带来的 `Authorization`——面板用自己的面板 key 取数，天然免输入。这也是一条免本框架 JWT 的路径（iframe 是独立文档，带不了 JWT），所以它只放行面板用得到的 `/ui/*`、`/health` 与 `/api/tasks`，其余一律 403。**不要**在这里注入 `amkr_local_api_key`：那等于开出一条无需本框架认证即可增删供应商与 Key 池的同源路径。
+
+AMKR 在别的机器上、且浏览器能直连它时，用 `amkr_public_url` 显式指定浏览器侧地址，此时不经过本框架反代（该地址必须自己保证与面板同源）。
 
 ## 注册策略
 
