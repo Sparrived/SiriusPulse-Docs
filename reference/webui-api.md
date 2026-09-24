@@ -28,6 +28,12 @@ WebUI API 路由集中定义在 `sirius_pulse/webui/routes.py`。
 
 之所以没有写接口：从后台替她行动会让她变成"可配置"而不是"自主"。页面同样只读。
 
+## 工作模式
+
+`/api/persona/work-mode` **只读**，返回每次工作模式的轨迹（`memory/work_mode/sessions.json`）：`goal`（她进去准备做什么）、`steps`（逐轮的正文、工具调用与工具结果、`send_midway_msg` 发出的话）、`result`（退出时给出的工作结果）、`status`（`running` / `completed` / `aborted`）与起止时间。`summary` 给出累计次数、已完成数、进行中数、步骤总数与最近一次的目标；`limit` 可限制返回条数（1–100，默认 50），按时间倒序。
+
+同样没有写接口：进出工作模式是模型自己的决定，从 WebUI 替她进入或退出就不是"她自己做"了。页面只读，轨迹文件落在 `memory/` 下，写入后经既有的文件监听推送 `data_changed`（资源名 `work-mode`），无需另开通道。
+
 ## WebSocket
 
 - `GET /ws/events`：订阅全部人格事件。
