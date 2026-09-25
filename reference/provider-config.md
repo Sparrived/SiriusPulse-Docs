@@ -79,14 +79,15 @@ WebUI 的「AMKR 运维」页也提供这个按钮（标在缺凭据的人格上
 
 ## 任务名契约
 
-AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填进 `model` 字段。内置 13 个任务名：
+AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填进 `model` 字段。内置 14 个任务名：
 
-`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`
+`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`、`autonomy_generate`
 
-`work_mode_generate` 专供工作模式：默认不启用（工作模式沿用本回合原本的任务名），在 WebUI 的 **分析 → 工作模式** 页面把"工作期间使用的模型"选成它，再在 AMKR 面板里把它指向想要的模型即可。
+`work_mode_generate` 专供工作模式：默认不启用（工作模式沿用本回合原本的任务名），在 WebUI 的 **分析 → 工作模式** 页面把"工作期间使用的模型"选成它，再在 AMKR 面板里把它指向想要的模型即可。`autonomy_generate` 专供自主行为回合，因此不会占用也不会触发正常回复的冷却。
 
 - `model` 命中任务名时，框架**不发送** `temperature` 与 `max_tokens`，模型选择、温度、最大 token 和故障切换都取 AMKR 任务定义里的值。
 - `model` 不是任务名时按普通模型直连，采样参数由框架给出。任务名必须与 AMKR 工作空间里的任务同名，否则 AMKR 会把它当成真实模型去查找并失败。
+- **登记了任务名还不够，必须给它绑一个模型。** 框架只负责创建任务名，模型是 AMKR 的配置；新建的任务模型为空，此时调用它会 404。运维页会把这种"已登记但未绑定"的任务列在 `unbound` 里。
 - 每个任务在本地的超时与重试写在 `data/personas/<name>/engine_state/orchestration.json` 的 `task_timeout` / `task_retries`，属于传输层参数。
 
 ## 工作空间与隔离
