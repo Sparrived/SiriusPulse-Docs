@@ -23,7 +23,7 @@
 
 核心设计：AMKR 把一个**任务名**解析成真实模型。因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段，而不是填模型 ID。
 
-内置 12 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`。
+内置 13 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`。其中 `work_mode_generate` 供工作模式使用，可以在 AMKR 面板里单独指向另一个模型。
 
 - `model` 命中上述任务名时，框架**不发送** `temperature` 与 `max_tokens`，由 AMKR 的任务定义决定；显式传入任务已固定的参数会被 AMKR 以 400 拒绝，因此不能两边各配一份。
 - `model` 不是任务名时按普通模型直连，此时采样参数仍由框架决定。

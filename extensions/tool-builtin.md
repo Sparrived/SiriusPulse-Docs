@@ -2,7 +2,7 @@
 
 内置 Tool 位于 `sirius_pulse/tools/builtin/`。
 
-其中 `bash`、`read_skill`、`workflow_state`、`group_file_exec` 只在**工作模式**内对模型可见：普通回合里模型只拿得到 `enter_work_mode`，需要多步工具协作时由它自己进入工作模式，重工具才解锁。见下文 [工作模式](#工作模式work-mode)。
+其中 `bash`、`read_skill`、`workflow_state`、`group_file_exec` 只在**工作模式**内对模型可见：普通聊天回合里模型只拿得到 `enter_work_mode`，需要多步工具协作时由它自己进入工作模式；自主回合与定时任务回合则由框架自动进入。见下文 [工作模式](#工作模式work-mode)。
 
 | 文件 | 功能 |
 |---|---|
@@ -24,13 +24,15 @@
 
 ## 工作模式（work mode）
 
-工作模式是模型自己进出的任务态：需要连续动手完成一件事时，它先调用 `enter_work_mode`（参数 `goal` 说明准备干什么），重工具随之解锁；做完再调用 `quit_work_mode`（参数 `result` 说明工作结果），`result` 直接作为对外回复发出去。三个流程控制工具由 `sirius_pulse/core/work_mode.py` 定义，通过 `ChatRequest.extra_tools` 注入，不注册进 Tool 表，因此在 WebUI 的工具页面上看不到。
+工作模式是"她独自把一件事做完"的任务态。聊天里由模型自己进出：需要连续动手完成一件事时，它先调用 `enter_work_mode`（参数 `goal` 说明准备干什么），重工具随之解锁；做完再调用 `quit_work_mode`（参数 `result` 说明工作结果），`result` 直接作为对外回复发出去。三个流程控制工具由 `sirius_pulse/core/work_mode.py` 定义，通过 `ChatRequest.extra_tools` 注入，不注册进 Tool 表，因此在 WebUI 的工具页面上看不到。
 
 - 普通回合只提供 `enter_work_mode`；工作模式内只提供 `quit_work_mode` 与 `send_midway_msg`，不提供 `enter_work_mode`（不支持嵌套）。
-- `bash`、`read_skill`、`workflow_state`、`group_file_exec` 只在工作模式内出现在工具列表里（`Brain.chat` 按 `ChatRequest.work_mode` 过滤）。因此自主回合、定时任务这类非工作模式回合同样拿不到它们。
+- **自主回合与定时任务回合由框架自动进入工作模式**，不需要模型再喊一次 `enter_work_mode`：这两类回合本来就在"她独自做事"，所以重工具直接可用，过程直接记进同一份轨迹（`source` 分别为 `autonomy` / `scheduled`，`goal` 取意图理由或 cron 命令）。它们原有的交付约定不变——定时任务回合的最终正文仍然是发到原聊天的主动消息，自主回合的最终正文仍然是留给自己的材料。
+- `bash`、`read_skill`、`workflow_state`、`group_file_exec` 只在工作模式内出现在工具列表里（`Brain.chat` 按 `ChatRequest.work_mode` 过滤）。由于上面那条自动进入，拿不到它们的只剩"普通聊天回合"。
 - **工作模式内的正文不外发**。模型在同一轮里既输出正文又调用工具时，普通回合的正文照常发出，工作模式内的正文只写进轨迹；只有工具执行结果和 `send_midway_msg` 会对外产生效果。模型只输出正文而没有调用任何工具时，框架回一条提示，让它用 `send_midway_msg` 或 `quit_work_mode`。
 - **暂存而不是打断**。工作模式期间别人发来的消息不进入模型上下文，先暂存在本次工作的暂存区，直到有消息点名了当前人格，才把暂存的整批消息一次性补进下一轮。这样整个工作模式期间的提示词前缀不变，缓存命中率不受新消息影响。
-- **轨迹**。每次工作模式都会把 `goal`、每一轮的正文、工具调用与工具结果、`send_midway_msg` 发出的话、以及 `result` 记入 `{persona}/memory/work_mode/sessions.json`（只保留最近 50 次），WebUI 的 **分析 → 工作模式** 页面可以看，见 [WebUI API 参考](../reference/webui-api)。
+- **工作期间用哪个模型**由 `memory/work_mode/settings.json` 的 `task_name` 决定。留空（默认）表示沿用本回合原本的任务名——普通聊天就是 `response_generate`，所以行为与从前一致；填了 `work_mode_generate` 之类的任务名，整段工作都走那个模型。任务名就是 AMKR 的模型入口：本框架内置了 `work_mode_generate` 这个任务名（会随其他任务名一起注册进 AMKR 工作空间），在 AMKR 面板里把它指向更强的模型即可，普通聊天不受影响。设置每次开始工作时重新读取，改完下一次生效，不需要重启人格；WebUI 的 **分析 → 工作模式** 页面可直接选。
+- **轨迹**。每次工作模式都会把 `goal`、来源、使用的任务名、每一轮的正文、工具调用与工具结果、`send_midway_msg` 发出的话、以及 `result` 记入 `{persona}/memory/work_mode/sessions.json`（只保留最近 50 次），WebUI 的 **分析 → 工作模式** 页面可以看，见 [WebUI API 参考](../reference/webui-api)。
 - 工作不必须做完：提示词明确允许模型在难以解决或无法自行解决时提前 `quit_work_mode` 并在 `result` 里说明卡点、向外部求助。因轮次上限或异常中断的会话记为 `aborted`，同样保留轨迹。
 
 ## read_skill

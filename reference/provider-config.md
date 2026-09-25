@@ -79,9 +79,11 @@ WebUI 的「AMKR 运维」页也提供这个按钮（标在缺凭据的人格上
 
 ## 任务名契约
 
-AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填进 `model` 字段。内置 12 个任务名：
+AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填进 `model` 字段。内置 13 个任务名：
 
-`cognition_analyze`、`memory_extract`、`response_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`
+`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`
+
+`work_mode_generate` 专供工作模式：默认不启用（工作模式沿用本回合原本的任务名），在 WebUI 的 **分析 → 工作模式** 页面把"工作期间使用的模型"选成它，再在 AMKR 面板里把它指向想要的模型即可。
 
 - `model` 命中任务名时，框架**不发送** `temperature` 与 `max_tokens`，模型选择、温度、最大 token 和故障切换都取 AMKR 任务定义里的值。
 - `model` 不是任务名时按普通模型直连，采样参数由框架给出。任务名必须与 AMKR 工作空间里的任务同名，否则 AMKR 会把它当成真实模型去查找并失败。
@@ -107,7 +109,7 @@ AMKR 是共享单实例，允许多个 AI 服务同时使用，**不是多租户
 - `GET /api/amkr/panel?persona=<名字>`：**仅管理员**（非 admin 返回 403）。返回 `{"persona", "url"}`，`url` 是可嵌入的 AMKR 工作空间面板地址（fragment 内是明文面板 key）；该人格没有 key 时返回 409 并说明补救路径。
 - `POST /api/amkr/rotate-inference-key`：**仅管理员**（非 admin 返回 403）。请求体 `{"persona": "..."}`，为该人格的空间换一把推理 key，返回 `{"persona", "inference_key"}` —— **明文只回这一次**。旧 key 立即失效，**不影响面板 key**；轮换后框架自动给该人格写 `provider` 重载标志重建 provider。用于空间建于该能力之前（本地只有面板 key）或凭据疑似泄漏。
 - `POST /api/amkr/register`：建出工作空间（含取两把凭据）并补齐缺失任务名。请求体 `{"persona": "..."}` 指定单个人格，`{}` 表示全部人格。
-- `GET /api/models`：仍然存在，但 `available_models` / `model_choices` 返回的是上述 12 个任务名（含中文标签），不再是厂商模型列表。
+- `GET /api/models`：仍然存在，但 `available_models` / `model_choices` 返回的是上述 13 个任务名（含中文标签），不再是厂商模型列表。
 
 `/api/providers`、`/api/providers/probe`、`/api/providers/refresh-models`、`/api/providers/models-probe`、`/api/providers/proxy` 已全部移除，代理配置与 `data/providers/proxy.json` 也不再存在。
 

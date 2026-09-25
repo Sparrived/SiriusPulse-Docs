@@ -62,7 +62,7 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 
 反代只放行面板需要的路径且不注入密钥——面板用自己的面板 key（在 URL fragment 里）取数，详见[两个地址](/reference/provider-config#两个地址-服务端-vs-浏览器)。
 
-相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（建出工作空间并补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/amkr/panel?persona=...`（仅管理员，返回可嵌入的面板地址）、`GET /api/models`（返回 12 个任务名作为可选模型）。
+相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（建出工作空间并补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/amkr/panel?persona=...`（仅管理员，返回可嵌入的面板地址）、`GET /api/models`（返回 13 个任务名作为可选模型）。
 
 ### AMKR 环境变量
 
@@ -81,7 +81,7 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 
 ## 任务名契约
 
-AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段。内置 12 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`。
+AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段。内置 13 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`。其中 `work_mode_generate` 专供工作模式，在 AMKR 面板里指向另一个模型即可让"工作期间"用上更强的模型，见 [内置 Tool 参考 → 工作模式](../extensions/tool-builtin#工作模式work-mode)。
 
 `model` 命中任务名时，框架**不发送** `temperature` 与 `max_tokens`，由 AMKR 的任务定义决定；两边同时配置会被 AMKR 以 400 拒绝。
 

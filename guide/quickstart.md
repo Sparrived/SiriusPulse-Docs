@@ -28,7 +28,7 @@ Sirius Pulse 自身不再内置任何模型厂商实现，所有模型调用统�
 
 ## 4. 注册任务名并配置模型
 
-Sirius Pulse 用**任务名**代替模型名：它把 `response_generate`、`memory_extract` 这类任务名直接填进请求的 `model` 字段，由 AMKR 查表换成真实模型。内置 12 个任务名。
+Sirius Pulse 用**任务名**代替模型名：它把 `response_generate`、`memory_extract` 这类任务名直接填进请求的 `model` 字段，由 AMKR 查表换成真实模型。内置 13 个任务名。
 
 到 WebUI 的「AMKR 运维」页查看连通性与各人格的 `registered` / `missing`，点一次「注册任务名」即可补齐缺失项。注册是只创建、不修改：已存在的任务一律不动。
 

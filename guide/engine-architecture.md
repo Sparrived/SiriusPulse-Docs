@@ -29,6 +29,8 @@
 
 延迟队列的一轮回复在 `core/bg_tasks_delayed.py` 里跑多轮工具调用：每轮把工具结果作为 `role="tool"` 消息追加回去，直到模型不再调用工具或到达 `max_tool_rounds`。
 
-**工作模式**（`core/work_mode.py`）是模型自己进出的任务态，用来把"需要连续动手的长任务"和"普通聊天"分开：普通回合里 `bash`、`read_skill`、`workflow_state`、`group_file_exec` 不对模型可见，只有 `enter_work_mode` 可见；进入后重工具解锁，正文不再外发，出口是 `send_midway_msg`（对外发言）和 `quit_work_mode`（退出并把 `result` 作为回复发出）。
+**工作模式**（`core/work_mode.py`）是"她独自把一件事做完"的任务态，用来把"需要连续动手的长任务"和"普通聊天"分开：普通聊天回合里 `bash`、`read_skill`、`workflow_state`、`group_file_exec` 不对模型可见，只有 `enter_work_mode` 可见；进入后重工具解锁，正文不再外发，出口是 `send_midway_msg`（对外发言）和 `quit_work_mode`（退出并把 `result` 作为回复发出）。
 
-工作模式期间到达的消息不进入模型上下文，而是先暂存，直到有消息点名当前人格才整批补进下一轮——这样整段工作的提示词前缀保持不变，KV 缓存得以命中。每次工作的 `goal`、逐轮正文、工具调用与结果、`result` 都写入 `{persona}/memory/work_mode/sessions.json`，供 WebUI 的 **分析 → 工作模式** 页面只读查看。细节见 [内置 Tool 参考](../extensions/tool-builtin#工作模式work-mode)。
+**自主回合与定时任务回合由框架自动进入工作模式**（`core/tool_engine_context.py` 的 `_run_tool_loop`）：它们本来就是她自己动手的时刻，重工具直接可用，过程写进同一份轨迹，只是不提供 `enter_work_mode` / `quit_work_mode`——进出由回合本身界定，原有的交付约定也不变。工作模式期间用哪个模型由任务名决定：`memory/work_mode/settings.json` 的 `task_name` 留空则沿用本回合原本的任务名，填了 `work_mode_generate` 之类的任务名就整段走它，在 AMKR 面板里把该任务名指向想要的模型即可。
+
+工作模式期间到达的消息不进入模型上下文，而是先暂存，直到有消息点名当前人格才整批补进下一轮——这样整段工作的提示词前缀保持不变，KV 缓存得以命中。每次工作的 `goal`、来源、使用的任务名、逐轮正文、工具调用与结果、`result` 都写入 `{persona}/memory/work_mode/sessions.json`，供 WebUI 的 **分析 → 工作模式** 页面查看。细节见 [内置 Tool 参考](../extensions/tool-builtin#工作模式work-mode)。
