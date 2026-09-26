@@ -33,4 +33,4 @@
 
 **自主回合与定时任务回合由框架自动进入工作模式**（`core/tool_engine_context.py` 的 `_run_tool_loop`）：它们本来就是她自己动手的时刻，重工具直接可用，过程写进同一份轨迹，只是不提供 `enter_work_mode` / `quit_work_mode`——进出由回合本身界定，原有的交付约定也不变。工作模式期间用哪个模型由任务名决定：`memory/work_mode/settings.json` 的 `task_name` 留空则沿用本回合原本的任务名，填了 `work_mode_generate` 之类的任务名就整段走它，在 AMKR 面板里把该任务名指向想要的模型即可。
 
-工作模式期间到达的消息不进入模型上下文，而是先暂存，直到有消息点名当前人格才整批补进下一轮——这样整段工作的提示词前缀保持不变，KV 缓存得以命中。每次工作的 `goal`、来源、使用的任务名、逐轮正文、工具调用与结果、`result` 都写入 `{persona}/memory/work_mode/sessions.json`，供 WebUI 的 **分析 → 工作模式** 页面查看。细节见 [内置 Tool 参考](../extensions/tool-builtin#工作模式work-mode)。
+工作模式期间到达的消息不进入模型上下文，而是先暂存，直到有消息点名当前人格才整批补进下一轮——这样整段工作的提示词前缀保持不变，KV 缓存得以命中。始终没被点名的那批在退出时排回延迟队列（不等去抖窗口），所以她忙完的下一轮会把工作期间攒下的话一并回掉，而不是丢掉。同理，`quit_work_mode` 的 `result` 为空不算退出（框架会要它补上），被打断的工作也一定留下一个说明，避免这一轮群里收不到任何话。每次工作的 `goal`、来源、使用的任务名、逐轮正文、工具调用与结果、`result` 都写入 `{persona}/memory/work_mode/sessions.json`，供 WebUI 的 **分析 → 工作模式** 页面查看。细节见 [内置 Tool 参考](../extensions/tool-builtin#工作模式work-mode)。
