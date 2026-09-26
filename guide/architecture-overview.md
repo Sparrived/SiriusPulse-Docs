@@ -39,7 +39,7 @@ flowchart TD
 | `sirius_pulse/providers/` | 唯一的 LLM 边界：`OpenAICompatibleProvider` 指向 AMKR，`amkr.py` 解析连接配置，`amkr_sync.py` 注册任务名。没有厂商实现与本地路由注册表。 |
 | `sirius_pulse/platforms/` | 具体平台适配器，目前包含 NapCat OneBot v11。 |
 | `sirius_pulse/adapters/` | 平台无关消息模型和基础适配器抽象。 |
-| `sirius_pulse/memory/` | 基础记忆、语义画像、日记、记忆单元、术语和用户档案。 |
+| `sirius_pulse/memory/` | 基础记忆、语义画像、记忆单元、术语和用户档案。 |
 | `sirius_pulse/tools/` | 模型可调用工具，支持内置与外部 Tool。 |
 | `sirius_pulse/plugins/` | 用户显式触发的聊天指令、事件和调度。 |
 | `sirius_pulse/webui/` | aiohttp API、静态前端、WebSocket 事件和管理逻辑。 |

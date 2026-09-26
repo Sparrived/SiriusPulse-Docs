@@ -7,8 +7,7 @@ flowchart TD
   Turn["单轮对话"] --> Basic["基础记忆"]
   Turn --> Cognition["认知事件"]
   Basic --> Semantic["语义画像"]
-  Basic --> Diary["日记"]
-  Diary --> Units["记忆单元"]
+  Basic --> Units["记忆单元"]
   Semantic --> Context["上下文组装"]
   Units --> Context
   Cognition --> Context

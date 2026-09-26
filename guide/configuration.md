@@ -62,7 +62,7 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 
 反代只放行面板需要的路径且不注入密钥——面板用自己的面板 key（在 URL fragment 里）取数，详见[两个地址](/reference/provider-config#两个地址-服务端-vs-浏览器)。
 
-相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（建出工作空间并补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/amkr/panel?persona=...`（仅管理员，返回可嵌入的面板地址）、`GET /api/models`（返回 13 个任务名作为可选模型）。
+相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（建出工作空间并补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/amkr/panel?persona=...`（仅管理员，返回可嵌入的面板地址）、`GET /api/models`（返回 11 个任务名作为可选模型）。
 
 ### AMKR 环境变量
 
@@ -81,11 +81,11 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 
 ## 任务名契约
 
-AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段。内置 14 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`、`autonomy_generate`。其中 `work_mode_generate` 专供工作模式，在 AMKR 面板里指向另一个模型即可让"工作期间"用上更强的模型，`autonomy_generate` 专供自主行为回合，见 [内置 Tool 参考 → 工作模式](../extensions/tool-builtin#工作模式work-mode)。
+AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段。内置 11 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`passive_tool`、`autonomy_generate`。其中 `work_mode_generate` 专供工作模式，在 AMKR 面板里指向另一个模型即可让"工作期间"用上更强的模型，`autonomy_generate` 专供自主行为回合，见 [内置 Tool 参考 → 工作模式](../extensions/tool-builtin#工作模式work-mode)。
 
 **注册不等于能用。** 框架只负责把任务名**建出来**（`POST /api/tasks`），模型与采样参数一律留给 AMKR——那是它的权限。新建的任务是**没有模型**的，必须由运维在 AMKR 面板里各指定一个真实模型；在此之前调用它会 404（AMKR 会拿任务名去找同名模型）。这一条曾经造成过真实故障：`autonomy_generate` 未登记时，每个自主回合都 404，自主行为整整两天没有产出，而运维页只比对任务**名字**，显示一切正常。现在「AMKR 运维」页会把它单列为 `unbound`，新建任务时日志也会提醒去绑模型。
 
-`model` 命中任务名时，框架**不发送** `temperature` 与 `max_tokens`，由 AMKR 的任务定义决定；两边同时配置会被 AMKR 以 400 拒绝。
+框架**从不发送** `temperature` 与 `max_tokens`（`GenerationRequest` / `RawRequest` 已不含这两个字段），模型与采样参数一律由 AMKR 的任务定义决定；需要改某个固定值时改 AMKR 侧。
 
 隔离靠**凭据本身**：模型调用发的是该人格空间的**推理 key**，AMKR 据此决定请求落在哪个空间，请求头 `X-AMKR-Workspace` 因而被忽略（框架仍发送，仅为兼容旧版 AMKR）。框架按人格拼接空间名为 `<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`）。AMKR 是共享单实例，并非多租户。工作空间由框架**显式创建**（`POST /api/workspaces`）：创建的那一刻是拿到该空间**两把凭据**的唯一时机，因此顺序是**先建空间拿凭据，再注册任务**。
 

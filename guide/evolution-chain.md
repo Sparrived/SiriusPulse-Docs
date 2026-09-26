@@ -1,11 +1,10 @@
 # 演化链
 
-演化链是 WebUI 中用于观察人格长期变化的一组视图。当前代码把它与记忆、日记、认知事件和用户档案共同呈现。
+演化链是 WebUI 中用于观察人格长期变化的一组视图。当前代码把它与记忆、认知事件和用户档案共同呈现。
 
 ## 数据来源
 
 - 对话历史：`/api/persona/conversations`。
-- 日记：`/api/persona/diary`。
 - 认知事件：`/api/persona/cognition` 与 `/api/persona/cognition/analysis`。
 - 记忆可视化：`/api/persona/memory-viz`。
 - 用户档案：`/api/persona/profile/*`。

@@ -6,7 +6,7 @@
 
 ## 职责
 
-向量化由 **AMKR** 提供，本框架不再自己运行模型：`client.py` 封装对 AMKR `/v1/embeddings` 的同步调用，供记忆、日记与检索流程使用。请求带的模型名来自 `global_config.json` 的 `embedding_model`（默认 `BAAI/bge-m3`），凭据用该人格工作空间的**推理 key**。
+向量化由 **AMKR** 提供，本框架不再自己运行模型：`client.py` 封装对 AMKR `/v1/embeddings` 的同步调用，供记忆单元与检索流程使用。请求带的模型名来自 `global_config.json` 的 `embedding_model`（默认 `BAAI/bge-m3`），凭据用该人格工作空间的**推理 key**。
 
 ## 关键协作
 
@@ -17,7 +17,7 @@
 
 ## 更换模型与索引重建
 
-向量维度随模型变化（`bge-small-zh` 512 维、`bge-m3` 1024 维）。ChromaDB 的 collection 在创建时固定维度并记下模型名，因此换模型后旧索引必须整体重建：WebUI 仪表盘的 Embedding 项会显示「待重建」，气泡内提供重建入口（`POST /api/embedding/rebuild`）。
+向量维度随模型变化（`bge-small-zh` 512 维、`bge-m3` 1024 维）。`memory_units/` 下的每条单元把向量**内联存在自己的 JSON 文件里**，检索走进程内的内存索引（`MemoryUnitIndexer`），因此换模型后需要按当前模型重算全部单元向量：WebUI 仪表盘的 Embedding 项会显示「待重建」，气泡内提供重建入口（`POST /api/embedding/rebuild`）。重建后内存索引随之刷新，期间语义检索不可用。共享的 embedding 客户端本身不变，仍是对 AMKR `/v1/embeddings` 的封装。
 
 ## 排查建议
 

@@ -23,10 +23,10 @@
 
 核心设计：AMKR 把一个**任务名**解析成真实模型。因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段，而不是填模型 ID。
 
-内置 14 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`passive_tool`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`diary_generate`、`diary_consolidate`、`topic_cluster`、`autonomy_generate`。其中 `work_mode_generate` 供工作模式使用、`autonomy_generate` 供自主行为回合使用，都可以在 AMKR 面板里单独指向另一个模型。
+内置 11 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`passive_tool`、`autonomy_generate`。其中 `work_mode_generate` 供工作模式使用、`autonomy_generate` 供自主行为回合使用，都可以在 AMKR 面板里单独指向另一个模型。
 
-- `model` 命中上述任务名时，框架**不发送** `temperature` 与 `max_tokens`，由 AMKR 的任务定义决定；显式传入任务已固定的参数会被 AMKR 以 400 拒绝，因此不能两边各配一份。
-- `model` 不是任务名时按普通模型直连，此时采样参数仍由框架决定。
+- 框架**从不发送** `temperature` 与 `max_tokens`：`GenerationRequest` 已不含这两个字段，请求体里只有 `model` 与消息等必要内容。模型选择与采样参数都由 AMKR 的任务定义决定，取值的权威只在 AMKR 一侧。
+- 命中任务名时 `model` 就是任务名本身，由 AMKR 查表换成真实模型；任务名必须与 AMKR 工作空间里的任务同名，否则 AMKR 会把它当成真实模型去查找并失败。`ModelRouter.resolve()` 也不会为未登记的任务名回退或另选模型，只会借用兜底任务的本地超时 / 重试。
 - 框架只**创建**任务名，模型与参数由 AMKR 决定。新建的任务模型为空，在运维于面板里绑定模型之前，调用它会 404——「已登记」不等于「已配好」。
 - 任务的超时与重试属于**本地传输层**关注点，由 `data/personas/<name>/engine_state/orchestration.json` 的 `task_timeout`、`task_retries` 控制，与模型无关。
 

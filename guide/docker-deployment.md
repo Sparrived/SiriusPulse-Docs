@@ -155,7 +155,7 @@ docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{print
 
 向量化由 AMKR 提供，模型名写在 `global_config.json` 的 `embedding_model`（默认 `BAAI/bge-m3`）。在 AMKR 中新增 embedding 模型后，还要把该模型名加进每个人格工作空间的模型白名单，否则工作空间推理 key 发起的直连模型调用会被拒。
 
-**换模型必须重建索引**：不同模型的向量维度不同（`bge-small-zh` 512 维、`bge-m3` 1024 维），旧向量与新向量算出的相似度没有意义。WebUI 仪表盘的 Embedding 项会显示「待重建」，气泡里给出「重建索引」按钮；重建会用当前模型重算该人格全部日记向量，期间语义检索不可用。
+**换模型必须重建索引**：不同模型的向量维度不同（`bge-small-zh` 512 维、`bge-m3` 1024 维），旧向量与新向量算出的相似度没有意义。WebUI 仪表盘的 Embedding 项会显示「待重建」，气泡里给出「重建索引」按钮；重建会用当前模型重算该人格全部记忆单元向量，期间语义检索不可用。
 
 ## WebUI 认证与数据安全
 
