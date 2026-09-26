@@ -17,7 +17,9 @@
 
 ## 更换模型与索引重建
 
-向量维度随模型变化（`bge-small-zh` 512 维、`bge-m3` 1024 维）。`memory_units/` 下的每条单元把向量**内联存在自己的 JSON 文件里**，检索走进程内的内存索引（`MemoryUnitIndexer`），因此换模型后需要按当前模型重算全部单元向量：WebUI 仪表盘的 Embedding 项会显示「待重建」，气泡内提供重建入口（`POST /api/embedding/rebuild`）。重建后内存索引随之刷新，期间语义检索不可用。共享的 embedding 客户端本身不变，仍是对 AMKR `/v1/embeddings` 的封装。
+向量维度随模型变化（`bge-small-zh` 512 维、`bge-m3` 1024 维）。`memory_units/` 下的向量与外置存放：单元元数据在 `<group>.json`，向量打包成 float32 的 sidecar 文件放在 `memory_units/vectors/` 下，由单元里的 `vector_file` 引用；检索走进程内的内存索引（`MemoryUnitIndexer`），加载时只给可能被注入的单元补向量（退休单元的向量留在磁盘）。因此换模型后需要按当前模型重算全部单元向量：WebUI 仪表盘的 Embedding 项会显示「待重建」，气泡内提供重建入口（`POST /api/embedding/rebuild`）。重建后内存索引随之刷新，期间语义检索不可用。共享的 embedding 客户端本身不变，仍是对 AMKR `/v1/embeddings` 的封装。
+
+单元里还记有向量对应文本的指纹（`vector_text`）：元数据被编辑过而文本指纹不符时，旧向量会被丢弃并按当前文本重算，避免过期向量继续参与语义检索。WebUI 只改元数据，写回时会原样保留 `vector_file` 引用。
 
 ## 排查建议
 

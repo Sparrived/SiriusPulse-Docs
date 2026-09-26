@@ -12,6 +12,14 @@ Sirius Pulse 的记忆系统是一组面向不同粒度的上下文组件。
 | 用户档案 | `memory/profile/` | 面向用户的人格化档案条目。 |
 | 统一用户 | `memory/user/` | 跨平台用户身份与关系锚点。 |
 
+### 记忆单元的存放
+
+单元元数据按群存放于 `memory_units/<group>.json`，向量单独打包成 float32 的 sidecar
+文件放在 `memory_units/vectors/` 下，由元数据里的 `vector_file` 引用。常驻检索只加载
+元数据，并只给可能被注入的单元补向量；`should_prompt=False` 的退休单元向量留在磁盘，
+既省内存又不影响人工追溯，去重需要时再按需读回。旧版把向量内联在 JSON 里的文件会在
+首次落盘时自动迁移。
+
 ## 数据进入 Prompt
 
 1. 平台消息写入会话和基础记忆。
