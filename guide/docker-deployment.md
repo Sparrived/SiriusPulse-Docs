@@ -55,6 +55,8 @@ Sirius 容器中的 `bash` 通过 `/run/sirius-container-admin.sock` 管理其�
 
 运行时安装的用户态依赖保存在 `./data/personas/<人格>/runtime/`，人格家目录是 `./data/personas/<人格>/home/`。Bash 会把 `HOME` 指向后者，`cwd` 默认（以及 `~`）也解析到那里，所以她的笔记与产物默认就写在挂载卷内，容器重建后仍在；在此之前 `HOME` 是镜像里的 `/home/sirius`，每次重建都会连同里面的成果一起被换掉。Bash 还会自动注入 `$PIP_TARGET`、`$NPM_CONFIG_PREFIX`、`$SIRIUS_RUNTIME_BIN`、`$SIRIUS_HOME` 及对应缓存目录，并在命令前奏里重新 export 一次——`bash -lc` 会先读 `/etc/profile`，而该文件无条件重置 `PATH`，不重新导出生效的话运行时目录会被丢掉。Python 包、npm 全局包和用户态二进制可在容器重建后继续使用。
 
+镜像内已预装 `git` 与 `gh`。人格自己的服务凭据放在 `./data/personas/<人格>/accounts.json`（WebUI「配置 → 人格账户」页可编辑），Bash 执行时按账号注入为环境变量，GitHub 默认注入 `GH_TOKEN`，因此 `gh` 不需要 `gh auth login` 就能以她自己的身份工作。凭据只经子进程环境传递、不写入命令行，接口读取时一律返回掩码；该文件在 `./data` 卷内，容器重建不丢。注意 `safe_environment()` 会滤掉宿主机上名字含 `TOKEN` 的变量，人格账号因此走的是一条独立注入路径，不会与宿主机凭据混在一起。
+
 系统包使用全局清单持久化：当前镜像是 Debian 系列，在 `./data/runtime-packages/apt.txt` 中一行写一个包名；CentOS/RHEL 容器使用 `yum.txt`。运行中的容器可先通过受控 root exec 安装，再记录清单：
 
 ```bash
