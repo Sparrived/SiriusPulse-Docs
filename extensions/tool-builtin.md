@@ -97,7 +97,7 @@
 
 判定按固定 UTC+8（中国无夏令时），与 `tools/cron_tasks.py` 的本地时间口径一致，不依赖系统时区。
 
-`intend_pursue` 与 `intend_share` 是仅有的两个对模型可见的自主相关 Tool，分别对应 `do` 和 `tell`。两者都只**登记**、绝不立即执行：`intend_pursue` 记下"我想弄明白什么、为什么在意"，`intend_share` 记下"我想说什么、说给谁"。登记不等于行动——她这次回复里已经在做的事（已经读过的链接、已经查过的资料）不该再登记一遍。
+`intend_pursue` 与 `intend_share` 是两个只**登记**的自主相关 Tool，分别对应 `do` 和 `tell`，且都对模型可见。两者都绝不立即执行：`intend_pursue` 记下"我想弄明白什么、为什么在意"，`intend_share` 记下"我想说什么、说给谁"。登记不等于行动——她这次回复里已经在做的事（已经读过的链接、已经查过的资料）不该再登记一遍。需要真的开口时用 `interaction_with_master`（见下）。
 
 `intend_pursue` 的 `kind` 是自由标签（`reading` / `building` / `note` / `musing`，缺省 `musing`），`urgency` 决定它多快被推进。`intend_share` 也可以带上 `intention_id` 给一条"还没想好说给谁"的旧意图补上受众，而不是重复登记同样的内容。受众候选来自确实可达的会话（活跃群 + 已配置的主人私聊），不可达的目标不会出现在候选里，避免意图指向一个发不出去的地方而永远悬着。
 
@@ -105,9 +105,19 @@
 
 产出写入 `{persona}/memory/autonomy/episodes.json`，同时作为 `scope=persona` 的记忆单元进入既有记忆，让她以后**知道**自己做过这件事。这只是"她知道"，不是"她说了"：记忆检索是否带出、要不要主动提起，由正常对话另行决定。上下文组装器对自主经历的措辞是"这是你自己做过或留意到的事，相关时可以用你自己的口吻提起"。
 
+### 说出去的话要能独立看懂
+
+收信人看不到她这段时间做过什么：对方手上只有那一条消息。最自然的失败方式就是把她自己那份浓缩过的结论直接发出去——结论对她成立，因为前因后果都在她脑子里；对收信人却是一句没头没尾的话，看的人只知道"她得出了一个结论"，不知道她为什么在做这件事、卡在哪儿、那结论意味着什么。
+
+所以自主回合的提示词会带上 `SHARE_TONE_NOTE`：要求先用平常聊天的口气说一句自己在弄什么，再说这回碰到了什么、怎么想的，最后才是结论；明确不要写成日报、汇报或总结，也不要为了显得完整而堆数字。`intend_share` 的 `what` 说明同步这条要求，`_MAX_WHAT_CHARS` 也从 300 放宽到 600——"在忙什么 + 这回怎么了 + 结论"在 300 字里放不下，她只能砍掉前因后果，那正是"只收到一个结论"的来源。
+
+这段提示只在**这一轮有人可说**时才出现（有 `tell` 意图、有待定受众，或存在候选受众）。没人可说时不讲语气，否则它就变成一份关于如何写作的空说明，反而催她产出。
+
 ### 边界与配置
 
-自主回合内会拒绝一切 `external_write` / `destructive` 类工具，因此她不能在做事的当口顺手往群里发消息；说与做始终是两个决定。豁免的是两个只做登记的 Tool：`intend_share`（决定"这条没想好受众的话说给谁"）与 `intend_pursue`。后者同样必须豁免——自由时间正是她**唯一**能自己起头做一件事的时刻，如果那时不能把冒出来的新念头记下来，每开一条线索都会在回合结束时断掉，她也就只剩别人的消息这一个持久来源了。真正防止链条失控的不是这个开关，而是意图仍要各自过 `autonomy` 的闸门与尝试上限才会花掉一次调用。
+自主回合内会拒绝一切 `external_write` / `destructive` 类工具，因此她不能在做事的当口顺手往群里发消息；说与做始终是两个决定。豁免的是三个可以自己开口的 Tool：`intend_share`（决定"这条没想好受众的话说给谁"）、`intend_pursue` 与 `interaction_with_master`。`intend_pursue` 同样必须豁免——自由时间正是她**唯一**能自己起头做一件事的时刻，如果那时不能把冒出来的新念头记下来，每开一条线索都会在回合结束时断掉，她也就只剩别人的消息这一个持久来源了。`interaction_with_master` 豁免是因为"想跟主人说句话"本身就是自主的一部分：一律拦掉的话，她第一次真正想找主人时只会被拒，然后把这件心事转写成别的形式存着。真正防止链条失控的不是这个开关，而是意图仍要各自过 `autonomy` 的闸门与尝试上限才会花掉一次调用。
+
+`interaction_with_master` 在自主回合里受夜间静默期约束：本地 23:00–08:00 之间她主动发的私聊不会直接送出，而是原样存成一条 `tell` 意图（受众是主人私聊），由 `autonomy` 在早上按正常的分享节奏投递。对话正在进行时的回话（`self_initiated=False`）不受影响，那条本就该立刻发出。拿不到 `engine_context` 时按失败处理，不会降级成"照发"。
 
 WebUI 的 `autonomy` 配置表单有三项：`check_interval_seconds`（心跳多久检查一次，最少 60 秒）、`share_cooldown_seconds`（两次主动分享之间的最小间隔）与 `free_time_interval_seconds`（无事惦记且长时间没人找她时，隔多久给一段空白的自主时间；默认 3600，设 0 表示关闭、退回纯意图闸门）。配置与 `_enabled` 一起保存在 `{persona}/tool_data/autonomy.json`；`share_cooldown_seconds` 与 `free_time_interval_seconds` 每次心跳都会重新读取，`check_interval_seconds` 在人格重启后生效。自主回合使用独立的 `autonomy_generate` 任务名，因此不会占用也不会触发正常回复的冷却。夜间静默期不是配置项，而是固定的礼貌约束。
 
@@ -137,7 +147,7 @@ WebUI 的 **分析 → 自主行为** 页面（`/api/persona/autonomy`）列出�
 
 在 WebUI 的 `bash` 配置表单中调整 `max_timeout_seconds` 和 `max_output_chars`。配置保存在 `{persona}/tool_data/bash.json`，每次调用都会重新读取。
 
-每个人格的运行时目录是 `{persona}/runtime/`，位于持久化的 `/app/data` 下。Bash 会自动加入运行时 `bin` 和 npm 全局 `bin`，并设置 `SIRIUS_RUNTIME_ROOT`、`SIRIUS_RUNTIME_BIN`、`PIP_TARGET`、`NPM_CONFIG_PREFIX`、`PIP_CACHE_DIR` 和 `NPM_CONFIG_CACHE`。运行时安装的 Python 包、npm 全局包和放入 `$SIRIUS_RUNTIME_BIN` 的用户态二进制会在容器重建后保留，例如：
+每个人格的运行时目录是 `{persona}/runtime/`，家目录是 `{persona}/home/`，两者都位于持久化的 `/app/data` 下。Bash 会把 `HOME` 指向 `{persona}/home/`，`cwd` 留空或填 `.`（以及 `~`）也解析到那里，因此她的默认落脚点就在挂载卷内，容器重建后依然存在。Bash 会自动加入运行时 `bin` 和 npm 全局 `bin`，并设置 `SIRIUS_RUNTIME_ROOT`、`SIRIUS_RUNTIME_BIN`、`SIRIUS_HOME`、`PIP_TARGET`、`NPM_CONFIG_PREFIX`、`PIP_CACHE_DIR` 和 `NPM_CONFIG_CACHE`。由于 `bash -lc` 会先读取 `/etc/profile`、而该文件会无条件重置 `PATH`，这些变量会在命令前奏里重新 export 一次，否则注入的运行时路径会被丢掉。运行时安装的 Python 包、npm 全局包和放入 `$SIRIUS_RUNTIME_BIN` 的用户态二进制会在容器重建后保留，例如：
 
 ```bash
 python -m pip install --target "$PIP_TARGET" httpx

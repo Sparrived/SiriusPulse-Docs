@@ -53,7 +53,7 @@ GitHub 仓库监控已迁为 `plugins/github_monitor` 外部 Plugin。官方 Com
 
 Sirius 容器中的 `bash` 通过 `/run/sirius-container-admin.sock` 管理其他容器，不挂载 `/var/run/docker.sock`。代理接受常规 Docker 命令和完整 `docker exec`，默认允许状态变更；在配置中设置 `allow_mutations: false` 可关闭变更操作。只拒绝不可逆删除/清理、明显的跨容器毁灭性命令和宿主机逃逸参数，便于在其他容器内正常执行 shell、读写文件及服务管理。
 
-运行时安装的用户态依赖保存在 `./data/personas/<人格>/runtime/`。Bash 会自动注入 `$PIP_TARGET`、`$NPM_CONFIG_PREFIX`、`$SIRIUS_RUNTIME_BIN` 及对应缓存目录；Python 包、npm 全局包和用户态二进制可在容器重建后继续使用。
+运行时安装的用户态依赖保存在 `./data/personas/<人格>/runtime/`，人格家目录是 `./data/personas/<人格>/home/`。Bash 会把 `HOME` 指向后者，`cwd` 默认（以及 `~`）也解析到那里，所以她的笔记与产物默认就写在挂载卷内，容器重建后仍在；在此之前 `HOME` 是镜像里的 `/home/sirius`，每次重建都会连同里面的成果一起被换掉。Bash 还会自动注入 `$PIP_TARGET`、`$NPM_CONFIG_PREFIX`、`$SIRIUS_RUNTIME_BIN`、`$SIRIUS_HOME` 及对应缓存目录，并在命令前奏里重新 export 一次——`bash -lc` 会先读 `/etc/profile`，而该文件无条件重置 `PATH`，不重新导出生效的话运行时目录会被丢掉。Python 包、npm 全局包和用户态二进制可在容器重建后继续使用。
 
 系统包使用全局清单持久化：当前镜像是 Debian 系列，在 `./data/runtime-packages/apt.txt` 中一行写一个包名；CentOS/RHEL 容器使用 `yum.txt`。运行中的容器可先通过受控 root exec 安装，再记录清单：
 
