@@ -9,11 +9,25 @@
 | 路径或端口 | 用途 |
 |---|---|
 | `./data:/app/data` | 人格、AMKR 连接配置、认证、记忆、日志和运行状态的持久化数据。 |
+| `./sirius_pulse:/app/sirius_pulse` | 应用源码；只读挂载，见[应用源码挂载](#应用源码挂载)。 |
 | `./plugins:/app/plugins` | 宿主机维护的外部 Plugin submodule 和 `plugins/_config.json`；不进入镜像。 |
 | `/run/sirius-container-admin.sock` | 可选的 Docker 管理代理；未配置时绑定 `/dev/null`，不是 Docker Socket。 |
 | `8080` | WebUI。 |
 
 不要执行 `docker compose down -v`，它会删除 Docker 卷；日常更新只使用下面的一条命令。
+
+## 应用源码挂载
+
+镜像在构建时把 `sirius_pulse` 装成 **editable install**（`uv sync` 生成的 `__editable__` 映射把 `sirius_pulse` 指向 `/app/sirius_pulse`），所以运行时 `import sirius_pulse` 读的就是那一个目录。官方 Compose 因此把宿主机 `./sirius_pulse` 以**只读**方式挂载到该路径：
+
+- **改 Python 代码不需要重建镜像**。宿主机拉取或编辑源码后重启容器即可生效：
+  ```bash
+  cd /root/SiriusPulse && git pull --ff-only origin master
+  docker compose restart sirius-pulse
+  ```
+- `scripts/update-container.sh` 仍然可用，只是源码变更时那次构建是多余的；依赖变更（`pyproject.toml` / `uv.lock`）**必须**跑它或显式 `--build`，因为第三方包在镜像里。
+- 只读是刻意的：容器内 UID `10001` 无法改写宿主机工作树，权限错误也不会因此出现。镜像里已有 `PYTHONDONTWRITEBYTECODE=1`，不写 `__pycache__`；运行时的可写路径是 `./data` 与 `./plugins`。
+- 镜像里的 `COPY sirius_pulse` 仍然保留，因此不挂载源码的纯镜像部署照旧可用。
 
 ## AMKR 前置依赖
 
@@ -133,7 +147,7 @@ bash /root/SiriusPulse/scripts/update-container.sh
 
 脚本会快进拉取 `master`、更新 Git 子模块、验证 Compose 配置、构建镜像、强制重建主容器、清理已从 Compose 移除的孤立容器，并等待 WebUI 与 AMKR 的 embedding 模型双双就绪。它不会执行 `down -v`，也不会删除 `data/`、认证信息、记忆或 AMKR 连接配置。
 
-普通源码改动会复用现有 `sirius-pulse:latest` 的完整运行环境，只复制应用源码；Python 依赖、Playwright 系统库和 Chromium 都不会重新下载。更新脚本会比较 `uv.lock` 与 Dockerfile 环境键，任一变化或首次部署没有旧镜像时，才会回退到完整环境构建。Chromium 也会从旧镜像复制到新的环境层，避免重建时重新下载。若发现旧 `sirius-pulse-v2-test` 容器但没有 `data/`，脚本会停止并要求先执行首次迁移，避免以空目录启动并覆盖可用数据。
+普通源码改动会复用现有 `sirius-pulse:latest` 的完整运行环境，Python 依赖、Playwright 系统库和 Chromium 都不会重新下载。由于源码是宿主机只读挂载（见[应用源码挂载](#应用源码挂载)），源码变更本可以直接 `docker compose restart` 生效；`update-container.sh` 仍是拉取代码与依赖变更的统一入口。更新脚本会比较 `uv.lock` 与 Dockerfile 环境键，任一变化或首次部署没有旧镜像时，才会回退到完整环境构建。Chromium 也会从旧镜像复制到新的环境层，避免重建时重新下载。若发现旧 `sirius-pulse-v2-test` 容器但没有 `data/`，脚本会停止并要求先执行首次迁移，避免以空目录启动并覆盖可用数据。
 
 ## 健康检查
 
