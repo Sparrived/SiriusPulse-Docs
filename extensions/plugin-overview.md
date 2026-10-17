@@ -2,6 +2,10 @@
 
 Plugin 是用户显式触发的聊天扩展，也可以声明由框架托管的后台任务并主动向聊天平台推送消息。外部插件代码位于宿主机项目根目录 `plugins/` Git submodule 中；框架运行时代码仍位于 `sirius_pulse/plugins/`。Docker/Compose 将宿主机目录挂载到 `/app/plugins`，外部源码和 `_config.json` 不会进入核心镜像。`github_monitor` 已作为外部 Plugin 提供，不再属于内置 Tool；其部署、密钥与迁移说明见 [GitHub Monitor 外部 Plugin](./github-monitor)。
 
+## 已提供的查询插件
+
+[AMKR 账号资源](./amkr-accounts) 通过 `/amkr account [名称或完整ID]` 查询全部或指定 CPA 账号和订阅资源，一次返回包含全部匹配资源的科技感长图；`/amkr status [小时]` 查询 AMKR 6.9+ 渠道健康矩阵、请求趋势与错误归因。复用全局 AMKR 管理连接，所有群成员均可查询；一个账号一条横行，不轮询、不切换推理账号。
+
 ## 核心文件
 
 | 文件 | 说明 |

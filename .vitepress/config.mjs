@@ -60,6 +60,7 @@ export default defineConfig({
           items: [
             { text: '插件系统总览', link: '/extensions/plugin-overview' },
             { text: 'GitHub Monitor 外部插件', link: '/extensions/github-monitor' },
+            { text: 'AMKR 账号资源插件', link: '/extensions/amkr-accounts' },
             { text: '编写自定义插件', link: '/extensions/plugin-authoring' },
             { text: '指令系统详解', link: '/extensions/plugin-command' },
             { text: '生命周期与上下文', link: '/extensions/plugin-lifecycle' },
