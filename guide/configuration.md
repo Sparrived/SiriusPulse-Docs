@@ -63,7 +63,7 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 
 反代只放行面板需要的路径且不注入密钥——面板用自己的面板 key（在 URL fragment 里）取数，详见[两个地址](/reference/provider-config#两个地址-服务端-vs-浏览器)。
 
-相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（建出工作空间并补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/amkr/panel?persona=...`（仅管理员，返回可嵌入的面板地址）、`GET /api/models`（返回 12 个任务名作为可选模型）。
+相关 API：`GET /api/amkr/status`（只读连接状态与各人格任务登记情况）、`POST /api/amkr/register`（建出工作空间并补齐缺失任务名，请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）、`GET /api/amkr/panel?persona=...`（仅管理员，返回可嵌入的面板地址）、`GET /api/models`（返回 13 个任务名作为可选模型）。
 
 ### AMKR 环境变量
 
@@ -82,7 +82,7 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 
 ## 任务名契约
 
-AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段。内置 12 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`passive_tool`、`autonomy_generate`、`image_generate`。其中 `work_mode_generate` 专供工作模式，在 AMKR 面板里指向另一个模型即可让"工作期间"用上更强的模型；`autonomy_generate` 专供自主行为回合，见 [内置 Tool 参考 → 工作模式](../extensions/tool-builtin#工作模式work-mode)；`image_generate` 专供 [生图工具](../extensions/tool-builtin#image-generate)，它走 AMKR 的图像端点而不是 chat completions，因此**必须**在 AMKR 面板里绑定一个生图模型（例如 `gpt-image-2.5-flare`）。
+AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段。内置 13 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`passive_tool`、`autonomy_generate`、`image_generate`、`fallback_generate`。其中 `work_mode_generate` 专供工作模式，在 AMKR 面板里指向另一个模型即可让"工作期间"用上更强的模型；`autonomy_generate` 专供自主行为回合，见 [内置 Tool 参考 → 工作模式](../extensions/tool-builtin#工作模式work-mode)；`image_generate` 专供 [生图工具](../extensions/tool-builtin#image-generate)，它走 AMKR 的图像端点而不是 chat completions，因此**必须**在 AMKR 面板里绑定一个生图模型（例如 `gpt-image-2.5-flare`）；`fallback_generate` 在 Gemini 命中内容策略拦截时兜底，应绑定一个非 Google 模型（例如 `deepseek-v4.1-flash`），否则拦截发生时没有可切换的通道。
 
 **注册不等于能用。** 框架只负责把任务名**建出来**（`POST /api/tasks`），模型与采样参数一律留给 AMKR——那是它的权限。新建的任务是**没有模型**的，必须由运维在 AMKR 面板里各指定一个真实模型；在此之前调用它会 404（AMKR 会拿任务名去找同名模型）。这一条曾经造成过真实故障：`autonomy_generate` 未登记时，每个自主回合都 404，自主行为整整两天没有产出，而运维页只比对任务**名字**，显示一切正常。现在「AMKR 运维」页会把它单列为 `unbound`，新建任务时日志也会提醒去绑模型。
 
