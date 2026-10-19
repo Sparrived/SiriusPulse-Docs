@@ -32,6 +32,12 @@
 
 多模态输入仍由框架预处理：`prepare_openai_compatible_messages()` 会把本地文件路径与 `file://` URI 转成 data URL 再发往 AMKR，AMKR 不负责这一步。
 
+## 传输方式：统一流式
+
+所有模型调用都以**流式**发出（请求体 `stream: true`）：`OpenAICompatibleProvider` 在本地把 SSE 增量聚合成完整结果，`Brain` 等调用方拿到的仍是一次完整的 `GenerationResult`（正文、`reasoning_content`、`tool_calls`、`finish_reason` 与真实 `usage`）。
+
+这样做是为了可靠性而不是逐字展示：CPA 这类上游在「非流式整段聚合」路径上经常返回 `200` 空响应，流式逐块转发绕开了那条路径；长生成也不再受「整个请求超时」限制，只有块间静默超过超时才算失败。请求同时带 `stream_options: {"include_usage": true}`，否则流式响应默认不带用量、token 记账会退化成估算。个别网关忽略 `stream` 直接回 JSON 时，provider 仍按整段响应解析（兼容回退）。
+
 ## 工作空间
 
 AMKR 是**共享单实例**，并非多租户：多个 AI 服务可以同时使用它。隔离靠**凭据本身**——模型调用发的是该空间的推理 key，AMKR 据此决定请求落在哪个空间，请求头 `X-AMKR-Workspace` 在推理 key 生效时**被忽略**（框架仍发送它，仅为兼容旧版 AMKR）。框架按人格划分命名空间：`<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`），由 `workspace_for()` 拼接。
