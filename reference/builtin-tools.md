@@ -2,6 +2,7 @@
 
 该页面记录与 内置 Tool 参考 相关的参考信息。当前实现已并入 WebUI、记忆和扩展 API。
 
+- 内置 Tool 清单与逐工具说明（含 `image_generate` 等）：[内置 Tool 参考](../extensions/tool-builtin)
 - WebUI 路由总览：[WebUI API](./webui-api)
 - 记忆系统：[记忆系统](../guide/memory-system)
 - Python 入口：[Python API](./python-api)

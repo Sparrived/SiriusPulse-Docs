@@ -11,7 +11,7 @@
 | 文件 | 职责 |
 |---|---|
 | `base.py` | `LLMProvider`、`AsyncLLMProvider`、`GenerationRequest` 抽象，以及多模态消息规范化 `prepare_openai_compatible_messages()`。 |
-| `openai_compatible.py` | 唯一的真实实现 `OpenAICompatibleProvider`，端点固定为 `<amkr_base_url>/v1/chat/completions`。 |
+| `openai_compatible.py` | 唯一的真实实现 `OpenAICompatibleProvider`，对话端点固定为 `<amkr_base_url>/v1/chat/completions`；图像请求走 `/v1/images/generations` 与 `/v1/images/edits`。 |
 | `amkr.py` | `AmkrSettings`、`load_amkr_settings()`：只解析「怎么连上 AMKR」。 |
 | `amkr_sync.py` | 向 AMKR 注册任务名，以及供 WebUI 使用的只读巡检。 |
 | `mock.py` | 测试用 Mock Provider。 |
@@ -23,7 +23,7 @@
 
 核心设计：AMKR 把一个**任务名**解析成真实模型。因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段，而不是填模型 ID。
 
-内置 11 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`passive_tool`、`autonomy_generate`。其中 `work_mode_generate` 供工作模式使用、`autonomy_generate` 供自主行为回合使用，都可以在 AMKR 面板里单独指向另一个模型。
+内置 12 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`passive_tool`、`autonomy_generate`、`image_generate`。其中 `work_mode_generate` 供工作模式使用、`autonomy_generate` 供自主行为回合使用，都可以在 AMKR 面板里单独指向另一个模型；`image_generate` 专供生图工具，必须绑一个生图模型。
 
 - 框架**从不发送** `temperature` 与 `max_tokens`：`GenerationRequest` 已不含这两个字段，请求体里只有 `model` 与消息等必要内容。模型选择与采样参数都由 AMKR 的任务定义决定，取值的权威只在 AMKR 一侧。
 - 命中任务名时 `model` 就是任务名本身，由 AMKR 查表换成真实模型；任务名必须与 AMKR 工作空间里的任务同名，否则 AMKR 会把它当成真实模型去查找并失败。`ModelRouter.resolve()` 也不会为未登记的任务名回退或另选模型，只会借用兜底任务的本地超时 / 重试。
@@ -37,6 +37,19 @@
 所有模型调用都以**流式**发出（请求体 `stream: true`）：`OpenAICompatibleProvider` 在本地把 SSE 增量聚合成完整结果，`Brain` 等调用方拿到的仍是一次完整的 `GenerationResult`（正文、`reasoning_content`、`tool_calls`、`finish_reason` 与真实 `usage`）。
 
 这样做是为了可靠性而不是逐字展示：CPA 这类上游在「非流式整段聚合」路径上经常返回 `200` 空响应，流式逐块转发绕开了那条路径；长生成也不再受「整个请求超时」限制，只有块间静默超过超时才算失败。请求同时带 `stream_options: {"include_usage": true}`，否则流式响应默认不带用量、token 记账会退化成估算。个别网关忽略 `stream` 直接回 JSON 时，provider 仍按整段响应解析（兼容回退）。
+
+## 图像端点
+
+图片生成由**同一个** `OpenAICompatibleProvider` 负责（`generate_image_async`），只是把端点换成 AMKR 的图像面：
+
+| 场景 | 端点 | 请求体 |
+|---|---|---|
+| 无参考图 | `POST <amkr_base_url>/v1/images/generations` | JSON：`model`（任务名）+ `prompt` |
+| 有参考图 | `POST <amkr_base_url>/v1/images/edits` | multipart 表单：`model`、`prompt`、`image` / `image[]` |
+
+- `model` 仍是任务名（`image_generate`），不是真实模型 ID。工作空间的推理 key 同样适用于图像端点，管理员 key（`amkr_local_api_key`）不参与。
+- 图像请求**不走流式**：生图天然是"一次请求、一次整张返回"，所以这里是普通 JSON 响应。返回的 `data[0]` 优先取内联 `b64_json`，没有时回退下载 `url`；媒体类型按字节魔数判定，不信任文件名后缀。
+- 带参考图时字段写成 `image`（单张）或 `image[]`（多张），这是 OpenAI images/edits 的约定；AMKR 只从表单里读 `model` 做路由，其余字段原样转发给上游。
 
 ## 工作空间
 
