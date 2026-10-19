@@ -95,7 +95,7 @@
 - 工具返回后先用自然语言告诉对方"在画了"，不要重复提交同一个请求。
 - 通知回合里**不要**再调 `image_generate`：那一轮是用来收尾的，不是重新下单。
 
-AMKR 侧：`image_generate` 是一个内置任务名（见 [任务名契约](../guide/configuration#任务名契约)），框架只负责把它注册进工作空间，**必须在 AMKR 面板里给它绑定一个生图模型**，否则调用会 404。要绑的是生图模型（例如 `gpt-image-2.5-flare`），裸的 `gpt-image-2.5` 并不存在。图像请求走 AMKR 的 `/v1/images/generations`（无参考图）与 `/v1/images/edits`（有参考图，multipart 表单），`model` 字段仍然是任务名，用的也仍然是该空间的推理 key。图像请求还会固定携带一个常见浏览器的 `User-Agent`：生图上游套着 Cloudflare 校验，默认的 httpx/python UA 会被 403（error code 1010）拦掉，而 AMKR 会把客户端请求头原样转发给上游——这一层只能在客户端补，聊天链路不受影响。
+AMKR 侧：`image_generate` 是一个内置任务名（见 [任务名契约](../guide/configuration#任务名契约)），框架只负责把它注册进工作空间，**必须在 AMKR 面板里给它绑定一个生图模型**，否则调用会 404。要绑的是生图模型（例如 `gpt-image-2.5-flare`），裸的 `gpt-image-2.5` 并不存在。图像请求走 AMKR 的 `/v1/images/generations`（无参考图）与 `/v1/images/edits`（有参考图，JSON 的 `images[].image_url` 带 data URL），`model` 字段仍然是任务名，用的也仍然是该空间的推理 key。图像请求还会固定携带一个常见浏览器的 `User-Agent`：生图上游套着 Cloudflare 校验，默认的 httpx/python UA 会被 403（error code 1010）拦掉，而 AMKR 会把客户端请求头原样转发给上游——这一层只能在客户端补，聊天链路不受影响。
 
 ## workflow_state
 
