@@ -56,11 +56,12 @@ Gemini 经 CPA 的 `antigravity` 通道会这样失败：prompt 命中 Google �
 | 场景 | 端点 | 请求体 |
 |---|---|---|
 | 无参考图 | `POST <amkr_base_url>/v1/images/generations` | JSON：`model`（任务名）+ `prompt` |
-| 有参考图 | `POST <amkr_base_url>/v1/images/edits` | JSON：`model`（任务名）、`prompt`、`images: [{"image_url": "data:image/png;base64,…"}]` |
+| 有参考图 | `POST <amkr_base_url>/v1/images/edits` | 先发 multipart 表单：`model`（任务名）、`prompt`、`image` 文件（多张重复该字段）；上游 4xx 拒绝时回退 JSON：`model`、`prompt`、`images: [{"image_url": "data:image/png;base64,…"}]` |
 
 - `model` 仍是任务名（`image_generate`），不是真实模型 ID。工作空间的推理 key 同样适用于图像端点，管理员 key（`amkr_local_api_key`）不参与。
 - 图像请求**不走流式**：生图天然是"一次请求、一次整张返回"，所以这里是普通 JSON 响应。返回的 `data[0]` 优先取内联 `b64_json`，没有时回退下载 `url`；媒体类型按字节魔数判定，不信任文件名后缀。
-- 带参考图时把图片编成 data URL 放进 `images[].image_url`，这是生图上游（ChatGPT 图像风格）的约定。**不要**改回 OpenAI 经典的 multipart 表单：AMKR 只从表单里读 `model` 做路由，然后按字节原样转发，表单里的 `model` 仍是任务名，上游会以「images endpoint requires an image model」400 拒绝；JSON 形态才会被 AMKR 正常改写 `model`。
+- 参考图为什么要发两次：AMKR 只是透明转发，multipart 表单里的 `model` 不会被改写成真实模型，JSON 体里的才会。不同上游只认其中一种形态——本地部署的图像服务（如 `qwen-image`）只读 multipart 表单，JSON 会 422「prompt missing」；sub2api 这类网关只认 JSON 的 `images[].image_url`，multipart 会被它以「images endpoint requires an image model」400 拒绝（它看到的是任务名）。因此先发标准表单，4xx 再回退 JSON；401/403 视为凭据问题，不回退也不重试。
+- 多张参考图用**重复的 `image` 字段**，不用 `image[]`：当前上游的本地图像服务只把 `image` 认作文件字段，`image[]` 会被当成「没收到图片」（实测 400）。
 - 图像请求还固定携带一个常见浏览器 `User-Agent`：生图上游套着 Cloudflare 校验，默认 httpx/python UA 会被 403（error code 1010）拦掉，而 AMKR 会把客户端请求头原样转发给上游——这一层只能在客户端补。
 
 ## 工作空间

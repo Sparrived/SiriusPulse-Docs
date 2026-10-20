@@ -61,7 +61,9 @@
 
 参考图的口径：
 
-- 参考图必须能被框架直接取到：本地绝对路径（`~` 展开到人格 home）或 http(s) 图片 URL。聊天里别人发的图片只以「图片描述」文本进入模型上下文（下载到本地的缓存路径不会作为文本暴露），模型没法把那张图原样再当参考图传一次；要按它改画，用文字描述或消息里真实出现的 http(s) 地址更稳。
+- 参考图必须能被框架直接取到：本地绝对路径（`~` 展开到人格 home）或 http(s) 图片 URL。
+- **聊天里收到的图片/表情包可以直接当参考图**：它们会被下载到人格缓存目录，模型在历史 XML 的 `<image path="…">` 和当轮用户消息的「本地图片路径」列表里能看到这些本地路径，把路径原样填进 `reference_images` 即可，不需要用户重发。平台签名 URL 仍然不会作为可用地址暴露（会过期），只保留描述。
+- 缓存有上限：`image_cache/` 与 `sticker_cache/` 各自最多保留最近 200 个文件，超出后旧的自动清理；路径只在文件仍存在时出现，很早以前的图片可能已经不在磁盘上。
 - `~` 会展开到该人格的 home（`{persona}/home/`），与 `group_file_exec` 的本地路径口径一致。
 - 参考图会先物化到 `{persona}/tool_data/artifacts/image_generate/references/<job_id>/`，再随请求发走。
 
@@ -95,7 +97,7 @@
 - 工具返回后先用自然语言告诉对方"在画了"，不要重复提交同一个请求。
 - 通知回合里**不要**再调 `image_generate`：那一轮是用来收尾的，不是重新下单。
 
-AMKR 侧：`image_generate` 是一个内置任务名（见 [任务名契约](../guide/configuration#任务名契约)），框架只负责把它注册进工作空间，**必须在 AMKR 面板里给它绑定一个生图模型**，否则调用会 404。要绑的是生图模型（例如 `gpt-image-2.5-flare`），裸的 `gpt-image-2.5` 并不存在。图像请求走 AMKR 的 `/v1/images/generations`（无参考图）与 `/v1/images/edits`（有参考图，JSON 的 `images[].image_url` 带 data URL），`model` 字段仍然是任务名，用的也仍然是该空间的推理 key。图像请求还会固定携带一个常见浏览器的 `User-Agent`：生图上游套着 Cloudflare 校验，默认的 httpx/python UA 会被 403（error code 1010）拦掉，而 AMKR 会把客户端请求头原样转发给上游——这一层只能在客户端补，聊天链路不受影响。
+AMKR 侧：`image_generate` 是一个内置任务名（见 [任务名契约](../guide/configuration#任务名契约)），框架只负责把它注册进工作空间，**必须在 AMKR 面板里给它绑定一个生图模型**，否则调用会 404。要绑的是生图模型（例如 `gpt-image-2.5-flare` 或本地 `qwen-image-2.1`），裸的 `gpt-image-2.5` 并不存在。图像请求走 AMKR 的 `/v1/images/generations`（无参考图，JSON）与 `/v1/images/edits`（有参考图）：参考图先用 OpenAI 标准的 multipart 表单（`image` 字段，多张重复该字段）发；上游以 4xx 拒绝时自动回退成 JSON 的 `images[].image_url`（data URL）。两种形态都保留是因为 AMKR 只是透明转发，本地图像服务只读表单、sub2api 这类网关只认 JSON（详见 [图像端点](../modules/provider-system#图像端点)）。`model` 字段仍然是任务名，用的也仍然是该空间的推理 key。图像请求还会固定携带一个常见浏览器的 `User-Agent`：生图上游套着 Cloudflare 校验，默认的 httpx/python UA 会被 403（error code 1010）拦掉，而 AMKR 会把客户端请求头原样转发给上游——这一层只能在客户端补，聊天链路不受影响。
 
 ## workflow_state
 
