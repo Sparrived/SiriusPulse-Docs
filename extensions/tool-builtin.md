@@ -12,6 +12,7 @@
 | `intend_share.py` | 让她登记"想对谁说什么"，只登记不发送，留给 `autonomy` 在合适的时机投递。 |
 | `group_file_exec.py` | 统一处理图片发送、文件上传，以及群文件列表读取和下载。 |
 | `image_generate.py` | 向 AMKR 的图像任务提交生图请求；立即返回后台任务 id，画完后由框架通知模型用 `group_file_exec` 把图发回原群。 |
+| `read_image.py` | 读取本地图片或图片 URL，把图片本身交给模型的视觉通道；用于看自己的三视图、聊天图片原图等。 |
 | `group_management.py` | 统一处理 QQ 群管理员操作。 |
 | `interaction_with_master.py` | 与主人沟通并查询主人的公开设备状态。 |
 | `desktop_screenshot.py` | 获取桌面截图。 |
@@ -65,6 +66,7 @@
 - **聊天里收到的图片/表情包可以直接当参考图**：它们会被下载到人格缓存目录，模型在历史 XML 的 `<image path="…">` 和当轮用户消息的「本地图片路径」列表里能看到这些本地路径，把路径原样填进 `reference_images` 即可，不需要用户重发。平台签名 URL 仍然不会作为可用地址暴露（会过期），只保留描述。
 - 缓存有上限：`image_cache/` 与 `sticker_cache/` 各自只保留最近 200 张图片（普通图片的 `.url` 来源侧车随图片一起淘汰），超出后旧的自动清理；路径只在文件仍存在时出现，很早以前的图片可能已经不在磁盘上。更早的消息一旦被归档进记忆单元，历史里只剩文字摘要、不再带路径；要复用就让用户重发，或趁上下文还在时直接用。
 - `~` 会展开到该人格的 home（`{persona}/home/`），与 `group_file_exec` 的本地路径口径一致。
+- 人格自己的形象设定图放在 `{persona}/assets/` 下即可被 system prompt 自动列出（见 [read_image](#read_image)），不用每次让用户重发。
 - 参考图会先物化到 `{persona}/tool_data/artifacts/image_generate/references/<job_id>/`，再随请求发走。
 
 落盘与队列：
@@ -98,6 +100,22 @@
 - 通知回合里**不要**再调 `image_generate`：那一轮是用来收尾的，不是重新下单。
 
 AMKR 侧：`image_generate` 是一个内置任务名（见 [任务名契约](../guide/configuration#任务名契约)），框架只负责把它注册进工作空间，**必须在 AMKR 面板里给它绑定一个生图模型**，否则调用会 404。要绑的是生图模型（例如 `gpt-image-2.5-flare` 或本地 `qwen-image-2.1`），裸的 `gpt-image-2.5` 并不存在。图像请求走 AMKR 的 `/v1/images/generations`（无参考图，JSON）与 `/v1/images/edits`（有参考图）：参考图先用 OpenAI 标准的 multipart 表单（`image` 字段，多张重复该字段）发；上游以形态不兼容的 4xx 拒绝时自动回退成 JSON 的 `images[].image_url`（data URL）。两种形态都保留是因为 AMKR 只是透明转发，本地图像服务只读表单、sub2api 这类网关只认 JSON（详见 [图像端点](../modules/provider-system#图像端点)）。`model` 字段仍然是任务名，用的也仍然是该空间的推理 key。图像请求还会固定携带一个常见浏览器的 `User-Agent`：生图上游套着 Cloudflare 校验，默认的 httpx/python UA 会被 403（error code 1010）拦掉，而 AMKR 会把客户端请求头原样转发给上游——这一层只能在客户端补，聊天链路不受影响。
+
+## read_image
+
+`read_image` 把图片读进模型的视觉通道，而不是只给一行路径：调用后图片会作为随附图片进入下一轮模型输入。它是普通 Tool，不需要工作模式。
+
+| 参数 | 说明 |
+|---|---|
+| `paths` | 必填，1–4 张图片。每项是本地绝对路径或 http(s) 图片 URL。 |
+| `focus` | 可选，这次想重点看什么（发色、服装花纹、画面里的文字等）。 |
+
+- 本地路径支持 `~`（展开到人格 home）、聊天图片缓存路径、`file://`，以及 `{persona}/assets/` 下的设定图路径。
+- 单张不超过 20MB，一次合计不超过 32MB；按字节魔数识别 PNG / JPEG / GIF / WebP / BMP，非图片文件直接报错。
+- http(s) 图片会先下载到 `{persona}/tool_data/artifacts/read_image/downloads/`（按内容哈希命名，最多保留 50 张），再以内联图片发给上游，避免签名链接过期或上游拉取失败。
+- 图片过大时由传输层按现有规则降采样成 JPEG 内联，不会把原图字节直接塞进上下文。
+
+**人格自己的三视图 / 设定图**：放进 `{persona}/assets/`（可以按服装、形态建子目录）。每次对话组装 system prompt 时，框架会扫描该目录并把图片的本地路径与视图标注（三视图合集 / 正视图 / 侧视图 / 后视图 / 半身像）写进「你自己的形象参考图」段落；模型因此知道自己的设定图在哪，既可直接用于 `image_generate` 的 `reference_images`，也可用 `read_image` 看清细节。标注按文件名关键词推断（`front` / `side` / `back` / `bust` / `turnaround` / `三视` / `正` / `侧` / `背` 等），认不出时用文件名本身；目录不存在时不注入任何内容。宿主机上其它图片目录不在容器挂载范围内，需要先把要用的图复制进 `assets/`。
 
 ## workflow_state
 
