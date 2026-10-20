@@ -113,6 +113,7 @@ AMKR 侧：`image_generate` 是一个内置任务名（见 [任务名契约](../
 - 本地路径支持 `~`（展开到人格 home）、聊天图片缓存路径、`file://`，以及 `{persona}/assets/` 下的设定图路径。
 - 单张不超过 20MB，一次合计不超过 32MB；按字节魔数识别 PNG / JPEG / GIF / WebP / BMP，非图片文件直接报错。
 - http(s) 图片会先下载到 `{persona}/tool_data/artifacts/read_image/downloads/`（按内容哈希命名，最多保留 50 张），再以内联图片发给上游，避免签名链接过期或上游拉取失败。
+- 本地图片若后缀与实际格式不一致（聊天缓存里常见 `.jpg` 实际是 PNG/GIF），会按真实格式复制到 `{persona}/tool_data/artifacts/read_image/normalized/` 再交给视觉通道，避免上游按错误 MIME 拒绝。
 - 图片过大时由传输层按现有规则降采样成 JPEG 内联，不会把原图字节直接塞进上下文。
 
 **人格自己的三视图 / 设定图**：放进 `{persona}/assets/`（可以按服装、形态建子目录）。每次对话组装 system prompt 时，框架会扫描该目录并把图片的本地路径与视图标注（三视图合集 / 正视图 / 侧视图 / 后视图 / 半身像）写进「你自己的形象参考图」段落；模型因此知道自己的设定图在哪，既可直接用于 `image_generate` 的 `reference_images`，也可用 `read_image` 看清细节。标注按文件名关键词推断（`front` / `side` / `back` / `bust` / `turnaround` / `三视` / `正` / `侧` / `背` 等），认不出时用文件名本身；目录不存在时不注入任何内容。宿主机上其它图片目录不在容器挂载范围内，需要先把要用的图复制进 `assets/`。
