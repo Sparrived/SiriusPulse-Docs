@@ -79,11 +79,11 @@ WebUI 的「AMKR 运维」页也提供这个按钮（标在缺凭据的人格上
 
 ## 任务名契约
 
-AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填进 `model` 字段。内置 10 个任务名：
+AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填进 `model` 字段。内置 9 个任务名：
 
-`cognition_analyze`、`memory_extract`、`response_generate`、`fallback_generate`、`work_mode_generate`、`proactive_generate`、`plugin_generate`、`passive_tool`、`autonomy_generate`、`image_generate`
+`cognition_analyze`、`memory_extract`、`response_generate`、`fallback_generate`、`work_mode_generate`、`plugin_generate`、`passive_tool`、`autonomy_generate`、`image_generate`
 
-`work_mode_generate` 专供工作模式：默认不启用（工作模式沿用本回合原本的任务名），在 WebUI 的 **分析 → 工作模式** 页面把"工作期间使用的模型"选成它，再在 AMKR 面板里把它指向想要的模型即可。`autonomy_generate` 专供自主行为回合，因此不会占用也不会触发正常回复的冷却。`image_generate` 专供生图工具，走的是 AMKR 的图像端点（`/v1/images/generations` 与 `/v1/images/edits`）而不是 chat completions，必须绑定一个生图模型。`fallback_generate` 是 Gemini 内容策略拦截时的兜底：`response_generate` 等四个跑 Gemini 的任务在识别到拦截文案后会把请求改发到这个任务，因此它必须绑定一个非 Google 模型（例如 `deepseek-v4.1-flash`），否则兜底路径会 404。
+`work_mode_generate` 专供工作模式：默认不启用（工作模式沿用本回合原本的任务名），在 WebUI 的 **分析 → 工作模式** 页面把"工作期间使用的模型"选成它，再在 AMKR 面板里把它指向想要的模型即可。`autonomy_generate` 专供自主行为回合，因此不会占用也不会触发正常回复的冷却。`image_generate` 专供生图工具，走的是 AMKR 的图像端点（`/v1/images/generations` 与 `/v1/images/edits`）而不是 chat completions，必须绑定一个生图模型。`fallback_generate` 是 Gemini 内容策略拦截时的兜底：`response_generate` 等三个配了兜底的任务在识别到拦截文案后会把请求改发到这个任务，因此它必须绑定一个非 Google 模型（例如 `deepseek-v4.1-flash`），否则兜底路径会 404。
 
 - 框架**从不发送** `temperature` 与 `max_tokens`：`GenerationRequest` / `RawRequest` 已不含这两个字段，请求体里也不写它们。任务定义是唯一权威——模型选择、温度、最大 token 和故障切换都取 AMKR 任务定义里的值；需要改某个固定值时改 AMKR 侧的任务定义。
 - 框架也不为未登记的任务名做本地兜底：`ModelRouter.resolve()` 的 `model_name` 始终是调用方给的任务名，未登记时只借用兜底任务的本地超时 / 重试，不会另选模型、也不会补上采样参数。任务名必须与 AMKR 工作空间里的任务同名，否则 AMKR 会把它当成真实模型去查找并失败。

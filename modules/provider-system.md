@@ -23,7 +23,7 @@
 
 核心设计：AMKR 把一个**任务名**解析成真实模型。因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段，而不是填模型 ID。
 
-内置 10 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`fallback_generate`、`work_mode_generate`、`proactive_generate`、`plugin_generate`、`passive_tool`、`autonomy_generate`、`image_generate`。其中 `work_mode_generate` 供工作模式使用、`autonomy_generate` 供自主行为回合使用，都可以在 AMKR 面板里单独指向另一个模型；`image_generate` 专供生图工具，必须绑一个生图模型；`fallback_generate` 是内容策略拦截时的兜底通道，应绑一个不受 Google/Gemini 内容过滤影响的模型（原因见下文）；`plugin_generate` 覆盖插件侧的全部生成（分析、人格化渲染、绕过管线的原生调用），原先拆开的 `plugin_analyze` / `plugin_render` / `plugin_raw` 已并入它。
+内置 9 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`fallback_generate`、`work_mode_generate`、`plugin_generate`、`passive_tool`、`autonomy_generate`、`image_generate`。其中 `work_mode_generate` 供工作模式使用、`autonomy_generate` 供自主行为回合使用，都可以在 AMKR 面板里单独指向另一个模型；`image_generate` 专供生图工具，必须绑一个生图模型；`fallback_generate` 是内容策略拦截时的兜底通道，应绑一个不受 Google/Gemini 内容过滤影响的模型（原因见下文）；`plugin_generate` 覆盖插件侧的全部生成（分析、人格化渲染、绕过管线的原生调用），原先拆开的 `plugin_analyze` / `plugin_render` / `plugin_raw` 已并入它；主动发言原先单列的 `proactive_generate` 已并入 `response_generate`。
 
 - 框架**从不发送** `temperature` 与 `max_tokens`：`GenerationRequest` 已不含这两个字段，请求体里只有 `model` 与消息等必要内容。模型选择与采样参数都由 AMKR 的任务定义决定，取值的权威只在 AMKR 一侧。
 - 命中任务名时 `model` 就是任务名本身，由 AMKR 查表换成真实模型；任务名必须与 AMKR 工作空间里的任务同名，否则 AMKR 会把它当成真实模型去查找并失败。`ModelRouter.resolve()` 也不会为未登记的任务名回退或另选模型，只会借用兜底任务的本地超时 / 重试。
@@ -47,7 +47,7 @@ Gemini 经 CPA 的 `antigravity` 通道会这样失败：prompt 命中 Google �
 1. `OpenAICompatibleProvider` 在流式聚合与 JSON 回退两条路径上都检查正文，命中固定标记（`the prompt could not be submitted` / `prompt contains sensitive words` / `generative ai prohibited use policy`）就抛 `ProviderContentFilteredError`（`error_code=PROVIDER_CONTENT_FILTERED`，不可重试），并清空本轮的 `usage`。
 2. `Brain._call_with_retry()` 识别该异常后，把请求的 `model` 换成任务配置里的 `fallback_model_name`（默认 `fallback_generate`）重发一次。按原任务重试没有意义——拦的是 prompt 本身；换到另一个供应商的模型才能把这一轮救回来。兜底也失败时抛异常，由调用方丢弃本轮：**宁可这一轮不回复，也不能把拦截文案发出去**。
 
-`ModelRouter` 给四个跑 Gemini 的任务（`response_generate`、`work_mode_generate`、`proactive_generate`、`autonomy_generate`）配了同一个兜底任务名。兜底任务和其他任务一样只登记名字，**必须在 AMKR 面板里绑定一个非 Google 模型**（生产为 `deepseek-v4.1-flash`），否则命中拦截时会 404，等于没有兜底。token 记录里的 `model` 会如实写成 `fallback_generate`，便于从用量侧看出兜底被用了几次。
+`ModelRouter` 给三个任务（`response_generate`、`work_mode_generate`、`autonomy_generate`）配了同一个兜底任务名。兜底任务和其他任务一样只登记名字，**必须在 AMKR 面板里绑定一个非 Google 模型**（生产为 `deepseek-v4.1-flash`），否则命中拦截时会 404，等于没有兜底。token 记录里的 `model` 会如实写成 `fallback_generate`，便于从用量侧看出兜底被用了几次。
 
 ## 图像端点
 
