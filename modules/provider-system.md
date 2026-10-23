@@ -23,7 +23,7 @@
 
 核心设计：AMKR 把一个**任务名**解析成真实模型。因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段，而不是填模型 ID。
 
-内置 13 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`passive_tool`、`autonomy_generate`、`image_generate`、`fallback_generate`。其中 `work_mode_generate` 供工作模式使用、`autonomy_generate` 供自主行为回合使用，都可以在 AMKR 面板里单独指向另一个模型；`image_generate` 专供生图工具，必须绑一个生图模型；`fallback_generate` 是内容策略拦截时的兜底通道，应绑一个不受 Google/Gemini 内容过滤影响的模型（原因见下文）。
+内置 10 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`fallback_generate`、`work_mode_generate`、`proactive_generate`、`plugin_generate`、`passive_tool`、`autonomy_generate`、`image_generate`。其中 `work_mode_generate` 供工作模式使用、`autonomy_generate` 供自主行为回合使用，都可以在 AMKR 面板里单独指向另一个模型；`image_generate` 专供生图工具，必须绑一个生图模型；`fallback_generate` 是内容策略拦截时的兜底通道，应绑一个不受 Google/Gemini 内容过滤影响的模型（原因见下文）；`plugin_generate` 覆盖插件侧的全部生成（分析、人格化渲染、绕过管线的原生调用），原先拆开的 `plugin_analyze` / `plugin_render` / `plugin_raw` 已并入它。
 
 - 框架**从不发送** `temperature` 与 `max_tokens`：`GenerationRequest` 已不含这两个字段，请求体里只有 `model` 与消息等必要内容。模型选择与采样参数都由 AMKR 的任务定义决定，取值的权威只在 AMKR 一侧。
 - 命中任务名时 `model` 就是任务名本身，由 AMKR 查表换成真实模型；任务名必须与 AMKR 工作空间里的任务同名，否则 AMKR 会把它当成真实模型去查找并失败。`ModelRouter.resolve()` 也不会为未登记的任务名回退或另选模型，只会借用兜底任务的本地超时 / 重试。

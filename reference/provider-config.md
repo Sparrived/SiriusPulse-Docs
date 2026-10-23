@@ -79,9 +79,9 @@ WebUI 的「AMKR 运维」页也提供这个按钮（标在缺凭据的人格上
 
 ## 任务名契约
 
-AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填进 `model` 字段。内置 13 个任务名：
+AMKR 把**任务名**解析成真实模型，因此框架把任务名直接填进 `model` 字段。内置 10 个任务名：
 
-`cognition_analyze`、`memory_extract`、`response_generate`、`work_mode_generate`、`proactive_generate`、`plugin_analyze`、`plugin_generate`、`plugin_render`、`plugin_raw`、`passive_tool`、`autonomy_generate`、`image_generate`、`fallback_generate`
+`cognition_analyze`、`memory_extract`、`response_generate`、`fallback_generate`、`work_mode_generate`、`proactive_generate`、`plugin_generate`、`passive_tool`、`autonomy_generate`、`image_generate`
 
 `work_mode_generate` 专供工作模式：默认不启用（工作模式沿用本回合原本的任务名），在 WebUI 的 **分析 → 工作模式** 页面把"工作期间使用的模型"选成它，再在 AMKR 面板里把它指向想要的模型即可。`autonomy_generate` 专供自主行为回合，因此不会占用也不会触发正常回复的冷却。`image_generate` 专供生图工具，走的是 AMKR 的图像端点（`/v1/images/generations` 与 `/v1/images/edits`）而不是 chat completions，必须绑定一个生图模型。`fallback_generate` 是 Gemini 内容策略拦截时的兜底：`response_generate` 等四个跑 Gemini 的任务在识别到拦截文案后会把请求改发到这个任务，因此它必须绑定一个非 Google 模型（例如 `deepseek-v4.1-flash`），否则兜底路径会 404。
 
@@ -110,7 +110,7 @@ AMKR 是共享单实例，允许多个 AI 服务同时使用，**不是多租户
 - `GET /api/amkr/panel?persona=<名字>`：**仅管理员**（非 admin 返回 403）。返回 `{"persona", "url"}`，`url` 是可嵌入的 AMKR 工作空间面板地址（fragment 内是明文面板 key）；该人格没有 key 时返回 409 并说明补救路径。
 - `POST /api/amkr/rotate-inference-key`：**仅管理员**（非 admin 返回 403）。请求体 `{"persona": "..."}`，为该人格的空间换一把推理 key，返回 `{"persona", "inference_key"}` —— **明文只回这一次**。旧 key 立即失效，**不影响面板 key**；轮换后框架自动给该人格写 `provider` 重载标志重建 provider。用于空间建于该能力之前（本地只有面板 key）或凭据疑似泄漏。
 - `POST /api/amkr/register`：建出工作空间（含取两把凭据）并补齐缺失任务名。请求体 `{"persona": "..."}` 指定单个人格，`{}` 表示全部人格。
-- `GET /api/models`：仍然存在，但 `available_models` / `model_choices` 返回的是上述 13 个任务名（含中文标签），不再是厂商模型列表。
+- `GET /api/models`：仍然存在，但 `available_models` / `model_choices` 返回的是上述 10 个任务名（含中文标签），不再是厂商模型列表。
 
 `/api/providers`、`/api/providers/probe`、`/api/providers/refresh-models`、`/api/providers/models-probe`、`/api/providers/proxy` 已全部移除，代理配置与 `data/providers/proxy.json` 也不再存在。
 
