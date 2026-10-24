@@ -29,6 +29,14 @@
 
 延迟队列的一轮回复在 `core/bg_tasks_delayed.py` 里跑多轮工具调用：每轮把工具结果作为 `role="tool"` 消息追加回去，直到模型不再调用工具或到达 `max_tool_rounds`。
 
+### 生成与投递分别确认
+
+生成结束不再直接从队列提交删除，也不代表 `AgentTurn` 已完成。已有延迟队列同时保存生成的 payload、批次身份与已确认分段游标；适配器收到平台 ACK 后才提交，明确拒收时只补未确认的结果，不再重跑 LLM 或已执行的工具。缓存重试与新消息按 `item_id` 隔离，避免把旧结果记到新事件上。群正忙只是延后，不取消该条回复。
+
+关键交付边界写入 `engine_state/delayed_queue.json`；平台发送前使用既有 GroupDispatcher 的 `sending` 标记及持久化回执，群调度关闭时仍保留投递账本。平台确认丢失、发送过程中重启，或执行工具/发出部分内容后生成中断，均保留 `uncertain` 并停止自动重放，需人工核对；不承诺跨平台的“恰好一次”。明确失败有界重试耗尽后保留失败状态，不伪装完成。
+
+后台生图只把产物路径或错误回调给 Agent，不自动向聊天投递图片或通知。回调复用内部工作工具循环，普通正文只留工作轨迹，Agent 可静默、继续加工或显式选择产物发送；选择发图时再使用稳定事件 ID 和主动投递回执。内部回调、定时/自主工具回合与延迟回复共享同群执行锁，回调让位于已有用户任务；工具执行前持久化不可重放标记，工具执行后中断不会整轮重试。详见 [生图工具](../extensions/tool-builtin#image-generate)。
+
 **工作模式**（`core/work_mode.py`）是"她独自把一件事做完"的任务态，用来把"需要连续动手的长任务"和"普通聊天"分开：普通聊天回合里 `bash`、`read_skill`、`workflow_state`、`group_file_exec` 不对模型可见，只有 `enter_work_mode` 可见；进入后重工具解锁，正文不再外发，出口是 `send_midway_msg`（对外发言）和 `quit_work_mode`（退出并把 `result` 作为回复发出）。
 
 **自主回合与定时任务回合由框架自动进入工作模式**（`core/tool_engine_context.py` 的 `_run_tool_loop`）：它们本来就是她自己动手的时刻，重工具直接可用，过程写进同一份轨迹，只是不提供 `enter_work_mode` / `quit_work_mode`——进出由回合本身界定，原有的交付约定也不变。工作模式期间用哪个模型由任务名决定：`memory/work_mode/settings.json` 的 `task_name` 留空则沿用本回合原本的任务名，填了 `work_mode_generate` 之类的任务名就整段走它，在 AMKR 面板里把该任务名指向想要的模型即可。
