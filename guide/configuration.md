@@ -28,7 +28,7 @@ Sirius Pulse 的配置分为全局配置（含 AMKR 连接）、人格配置、�
 | 文件 | 说明 |
 |---|---|
 | `persona.json` | 人格名称、人设、语气、性格等。 |
-| `orchestration.json` | 人格级编排配置；模型与采样参数不在这里，见下方「任务编排配置」。 |
+| `engine_state/orchestration.json` | 人格级编排配置；模型与采样参数不在这里，见下方「任务编排配置」。 |
 | `adapters.json` | 平台适配器配置，例如 NapCat WebSocket。 |
 | `experience.json` | 背景经历和可编辑经验材料。 |
 | `accounts.json` | 人格自己的外部服务账号（如 GitHub）。凭据只存本地、读取时返回掩码，执行 Bash 时注入为环境变量。 |

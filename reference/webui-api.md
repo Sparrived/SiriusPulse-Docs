@@ -8,6 +8,12 @@ WebUI API 路由集中定义在 `sirius_pulse/webui/routes.py`。
 
 `/api/models` 返回的是 12 个 AMKR 任务名（`available_models` / `model_choices`），不再是厂商模型列表。`/api/amkr/status` 为只读巡检（含各人格 `panel_ready` / `inference_ready`，但**不含**任何 key），`/api/amkr/register` 建出工作空间并补齐缺失任务名（请求体 `{"persona": "..."}` 或 `{}` 表示全部人格）。`/api/amkr/panel?persona=<名字>` **仅管理员可用**，返回可嵌入的工作空间面板地址（fragment 内为明文面板 key），即运维页 iframe 的来源。`/api/amkr/rotate-inference-key` **仅管理员可用**，请求体 `{"persona": "..."}`，换一把该空间的推理 key 并返回 `{"persona", "inference_key"}`——明文只回这一次，旧 key 立即失效且**不影响面板 key**。旧的 `/api/providers*` 端点已全部移除。
 
+## 监控健康口径
+
+`/api/monitoring/health`、`/api/monitoring/metrics` 与 `/api/monitoring/overview` 使用同一健康判定。`running` 仅保留 Worker 生命周期声明，不代表适配器在线；`healthy` 还要求已完成启动、最近 30 秒内有效心跳、无适配器降级，以及配置/记忆检查正常。总览另提供 `healthy_personas`，不再用运行数量冒充健康数量。
+
+健康详情的 `checks.heartbeat` 返回心跳状态与年龄，`checks.adapter` 返回连接/降级状态；陈旧心跳、断线或启动中均不会显示进程检查正常。缺省 `engine_state/orchestration.json` 可使用默认配置，不视为缺文件；存在但格式错误则报告配置异常，旧人格根目录的编排文件不再作为健康条件。
+
 ## 人格管理
 
 `/api/personas`、`/api/personas/active`、`/api/personas/{name}/activate`、`/api/persona/start`、`/api/persona/stop`、`/api/persona/status`。
