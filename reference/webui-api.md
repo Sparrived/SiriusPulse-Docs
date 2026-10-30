@@ -42,6 +42,49 @@ WebUI API 路由集中定义在 `sirius_pulse/webui/routes.py`。
 
 轨迹本身仍然只读：进出工作模式是模型自己的决定，从 WebUI 替她进入或退出就不是"她自己做"了。轨迹文件落在 `memory/` 下，写入后经既有的文件监听推送 `data_changed`（资源名 `work-mode`），无需另开通道。
 
+## 人物档案与视觉资产
+
+这些最小管理路由定义在 `routes.py`，由 `people_api.py` 分派，全部要求 `auth_role=admin`，作用于当前人格；viewer、群管理员不自动拥有此权限。没有新增完整人物图库 GUI。面向用户与部署者的完整步骤见[人物档案与视觉资产指南](../guide/person-profiles.md)，模型工具字段见[Tools API](tools-api.md#人物与视觉工具)。
+
+| 方法与路由 | 请求体／参数 | 用途 |
+| --- | --- | --- |
+| `GET /api/persona/people/state` | `group_id` 可选 | 当前部署额度、自动候选开关、保留设置和人格 UUID |
+| `GET /api/persona/people/{person_id}` | `group_id` 可选 | 人物资料与视觉摘要；视觉含最多 5 条无 `refs` 的 `drafts`，只有草稿时 `state=draft_only`。`state`、`migration` 是两个保留的 GET 路径，其余按人物 UUID 查询；维护者也不自动扩大私聊／群范围 |
+| `POST /api/persona/people/policy` | `controller`、`total_quota`、`auto_enabled`、`retention_days`、`per_person_daily`、`per_persona_daily`，均可选 | 只修改传入的部署策略。`controller` 应为可信人物 UUID；不能由普通人物工具提高额度 |
+| `POST /api/persona/people/visual` | `action`、`target`、`payload`，以及可选 `evidence_ref`、`source_ref` | 调用同一视觉领域服务。`payload` 不得包含 `access`、`queue`、`target`、`evidence_ref`、`source_ref`、`action` 等保留字段 |
+| `GET /api/persona/people/migration` | 无 | 旧人物数据 dry-run，等价于 migration-preview |
+| `POST /api/persona/people/migration-preview` | `{}` | 仅预览映射与冲突，不写人物数据 |
+| `POST /api/persona/people/migration-apply` | `{}` | 执行幂等迁移，返回 `migration_id` 与本地备份路径 |
+| `POST /api/persona/people/migration-rollback` | `{"migration_id":"..."}` | 回滚该次尚无后续活动的新增映射；不是数据库任意时间点恢复 |
+| `POST /api/persona/people/deletion-preview` | `{"person_id":"<UUID>","scope":"person"}` | 返回影响预览、未决边界与一次性 `confirm_token`，此时不删除 |
+| `POST /api/persona/people/deletion-confirm` | `{"confirm_token":"del_..."}` | 按预览确认清理本地可定位副本；令牌绑定操作者并有时效 |
+
+`visual` 的激活请求示例：
+
+```json
+{
+  "action": "activate",
+  "target": {"ref": "person_id", "value": "<人物UUID>"},
+  "payload": {
+    "profile_id": "vp_example",
+    "revision": 2,
+    "expected_revision": 1
+  }
+}
+```
+
+`visual` 路由不会凭管理员身份捏造用户附件证据：`stage` 仍要求当轮真实 `evidence_ref`，`derive` 还要求已接入的生成队列。此最小管理端点当前不注入队列，不能将它当成任意上传或无条件付费生成入口；派生请从接有队列的对话工具发起。
+
+首次启用尚无正式修订时，管理 API 可显式传 `"expected_revision": null`；此值不同于省略。`null` 不会绕过已有正式修订的 CAS 冲突。真实当轮来源可绑定明确可见主体为草稿；非维护者 `activate:true` 仅返回 `activation.confirmation_required`，不改 active、身份或 claims。`derive` 产生候选，只有维护者明确 `activate` 才切换正式指针。当前可见素材的手动共享不消耗 grant；自动候选仍要求有限 grant、部署开关、额度及重验，旧 manual grant 撤回不取消独立的新手动任务。普通工具的字段与 CAS 表达方式见[工具参考](tools-api.md#人物与视觉工具)。
+
+错误响应包含 `code`：未通过管理员检查返回 403，其余 `permission_denied`／`consent_required` 也返回 403；`revision_conflict`／`confirm_invalid` 返回 409，其他无效请求或领域拒绝通常为 400；未捕获的服务异常返回 503。不能把 HTTP 成功解释为真实图片质量或平台外发成功。
+
+### 保留、删除与部署边界
+
+`scope:person` 删除的是该人物的视觉域，而非整个人物身份：清理本地资产／任务副本、关联修订描述和任务输入、参考链接及 JSON 队列快照，相关审计脱敏，保留最小防重放／计费墓碑。身份、称呼、声明、原聊天和来源证据不删除，预览与结果的 `retained` 明示此范围。文件或队列擦除失败会列入 `unresolved`；逻辑字段清空不等于 SQLite 空闲页、WAL 或磁盘历史的安全擦除。
+
+`retention_days` 当前仅保存配置，**没有自动到期清理任务**。删除需要预览与确认两步；本地清理不承诺撤回外部生成服务已收到的请求、聊天平台已发消息或离线备份，备份须按运维策略另行处理。生产环境仍需单独验证外部网络与 JWT 鉴权、真实双人图像效果及多进程性能，不能将本地接口回归等同于这些部署结论。
+
 ## WebSocket
 
 - `GET /ws/events`：订阅全部人格事件。

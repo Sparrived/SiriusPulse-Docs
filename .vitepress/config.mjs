@@ -36,6 +36,7 @@ export default defineConfig({
             { text: '系统架构全景', link: '/guide/architecture-overview' },
             { text: '引擎架构', link: '/guide/engine-architecture' },
             { text: '记忆系统', link: '/guide/memory-system' },
+            { text: '人物档案与视觉资产', link: '/guide/person-profiles' },
           ],
         },
         {
@@ -91,6 +92,7 @@ export default defineConfig({
           text: '开发',
           items: [
             { text: '开发指南', link: '/reference/development' },
+            { text: '人物画像与视觉资产需求／实施映射', link: '/reference/person-profile-assets-requirements' },
           ],
         },
       ],
