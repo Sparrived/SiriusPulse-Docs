@@ -74,8 +74,8 @@ Sirius 容器中的 `bash` 通过 `/run/sirius-container-admin.sock` 管理其�
 系统包使用全局清单持久化：当前镜像是 Debian 系列，在 `./data/runtime-packages/apt.txt` 中一行写一个包名；CentOS/RHEL 容器使用 `yum.txt`。运行中的容器可先通过受控 root exec 安装，再记录清单：
 
 ```bash
-docker exec --user root sirius-pulse-v2-test apt-get update
-docker exec --user root sirius-pulse-v2-test apt-get install -y jq
+docker exec --user root sirius-pulse apt-get update
+docker exec --user root sirius-pulse apt-get install -y jq
 printf '%s\n' jq >> /root/SiriusPulse/data/runtime-packages/apt.txt
 ```
 
@@ -147,7 +147,7 @@ bash /root/SiriusPulse/scripts/update-container.sh
 
 脚本会快进拉取 `master`、更新 Git 子模块、验证 Compose 配置、构建镜像、强制重建主容器、清理已从 Compose 移除的孤立容器，并等待 WebUI 与 AMKR 的 embedding 模型双双就绪。它不会执行 `down -v`，也不会删除 `data/`、认证信息、记忆或 AMKR 连接配置。
 
-普通源码改动会复用现有 `sirius-pulse:latest` 的完整运行环境，Python 依赖、Playwright 系统库和 Chromium 都不会重新下载。由于源码是宿主机只读挂载（见[应用源码挂载](#应用源码挂载)），源码变更本可以直接 `docker compose restart` 生效；`update-container.sh` 仍是拉取代码与依赖变更的统一入口。更新脚本会比较 `uv.lock` 与 Dockerfile 环境键，任一变化或首次部署没有旧镜像时，才会回退到完整环境构建。Chromium 也会从旧镜像复制到新的环境层，避免重建时重新下载。若发现旧 `sirius-pulse-v2-test` 容器但没有 `data/`，脚本会停止并要求先执行首次迁移，避免以空目录启动并覆盖可用数据。
+普通源码改动会复用现有 `sirius-pulse:latest` 的完整运行环境，Python 依赖、Playwright 系统库和 Chromium 都不会重新下载。由于源码是宿主机只读挂载（见[应用源码挂载](#应用源码挂载)），源码变更本可以直接 `docker compose restart` 生效；`update-container.sh` 仍是拉取代码与依赖变更的统一入口。更新脚本会比较 `uv.lock` 与 Dockerfile 环境键，任一变化或首次部署没有旧镜像时，才会回退到完整环境构建。Chromium 也会从旧镜像复制到新的环境层，避免重建时重新下载。若发现 `sirius-pulse`（或旧版 `sirius-pulse-v2-test`）容器但没有 `data/`，脚本会停止并要求先执行首次迁移，避免以空目录启动并覆盖可用数据。
 
 ## 健康检查
 
@@ -158,13 +158,13 @@ cd /root/SiriusPulse
 docker compose ps
 curl -fsS http://127.0.0.1:8080/ >/dev/null
 curl -fsS http://127.0.0.1:28881/health
-docker logs --tail 100 sirius-pulse-v2-test
+docker logs --tail 100 sirius-pulse
 ```
 
 日志应包含 AMKR Embedding 已就绪、人格已就绪和 `TOOL runtime 已挂载`。使用 GitHub Monitor 时，还应确认日志中的 `Plugin runtime 已挂载` 列表包含 `github_monitor`；仅看到 Tool runtime 不表示该 Plugin 已加载。确认数据挂载时可检查：
 
 ```bash
-docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' sirius-pulse-v2-test
+docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' sirius-pulse
 ```
 
 ## 更换 Embedding 模型
@@ -186,5 +186,5 @@ WebUI 管理员用户名为 `admin`。首次启动会生成随机密码并只在
 | 更新后仍有旧 Embedding 容器 | 使用 `bash scripts/update-container.sh`，脚本会执行 `--remove-orphans`。 |
 | Embedding 显示「不可用」 | 在 AMKR 中确认 embedding 模型已配置、供应商与 Key 可用，且模型名已加入该工作空间的白名单。 |
 | Embedding 显示「待重建」 | 用 WebUI 的「重建索引」重算向量；换模型后旧索引不再可用。 |
-| WebUI 未响应 | 检查 `docker compose ps`、`docker logs --tail 100 sirius-pulse-v2-test`，再检查 `8080` 与 AMKR 端口。 |
+| WebUI 未响应 | 检查 `docker compose ps`、`docker logs --tail 100 sirius-pulse`，再检查 `8080` 与 AMKR 端口。 |
 | 构建提示空间不足 | 先检查 `df -h /` 和 `docker system df`；若已扩展 Hyper-V 磁盘，按本页的 LVM 扩容流程扩展根文件系统。 |

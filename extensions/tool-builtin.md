@@ -230,8 +230,8 @@ chmod +x "$SIRIUS_RUNTIME_BIN/tool"
 系统包仍由当前容器发行版决定；本镜像是 Debian 系列，使用 `apt`，不是宿主机 CentOS 的 `yum`。当前服务用户不是 root，但可通过受控的 `docker exec --user root` 安装。需要持久化的包名按“一行一个包”写入全局的 `/app/data/runtime-packages/apt.txt`（CentOS/RHEL 容器则写入 `yum.txt`），更新脚本会在重建并通过健康检查后自动恢复：
 
 ```bash
-docker exec --user root sirius-pulse-v2-test apt-get update
-docker exec --user root sirius-pulse-v2-test apt-get install -y jq
+docker exec --user root sirius-pulse apt-get update
+docker exec --user root sirius-pulse apt-get install -y jq
 printf '%s\n' jq >> /app/data/runtime-packages/apt.txt
 ```
 
