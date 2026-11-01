@@ -24,8 +24,10 @@ Tool 可以通过 `TOOL_META["config"]` 声明不暴露给模型的、按人格�
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| `GET` | `/api/persona/tools` | 列出人格 Tool。 |
+| `GET` | `/api/persona/tools` | 列出人格 Tool（配置中的密钥回显为掩码）。 |
 | `POST` | `/api/persona/tools/{tool_name}/toggle` | 启停 Tool。 |
-| `GET` | `/api/persona/tools/{tool_name}/config` | 获取 Tool 配置。 |
-| `POST` | `/api/persona/tools/{tool_name}/config` | 保存 Tool 配置。 |
+| `GET` | `/api/persona/tools/{tool_name}/config` | 获取 Tool 配置；已保存的密钥只回显掩码 `********`。 |
+| `POST` | `/api/persona/tools/{tool_name}/config` | 保存 Tool 配置；密钥字段提交掩码或空串表示保留原值，其他值覆盖。 |
 | `GET` | `/api/persona/tool-history` | 查看 Tool 执行历史。 |
+
+密钥字段指 `TOOL_META` 中声明为 `password`/`secret` 的参数，以及名称像密钥的键（如 `*_api_key`、`*_token`，含未声明的额外键），判定规则与插件设置、MCP 配置共用。
