@@ -2,7 +2,7 @@
 
 Python 模型：`ToolDefinition`、`ToolParameter`、`ToolResult`、`ToolContentBlock`、`ToolInvocationContext`、`BackgroundTaskSpec`、`TriggerSpec`。
 
-WebUI API：`GET /api/persona/tools`、`POST /api/persona/tools/{tool_name}/toggle`、`GET /api/persona/tools/{tool_name}/config`、`POST /api/persona/tools/{tool_name}/config`、`GET /api/persona/tool-history`。
+WebUI API：`GET /api/persona/tools`、`POST /api/persona/tools/{tool_name}/toggle`、`GET /api/persona/tools/{tool_name}/config`、`POST /api/persona/tools/{tool_name}/config`、`GET /api/persona/tool-history`。Tool 配置中的密钥读取时只回显掩码 `********`，回传掩码即保留原值，详见 [Tool 系统 · API](../guide/tool-system.md#api)。
 
 ## 人物与视觉工具
 
