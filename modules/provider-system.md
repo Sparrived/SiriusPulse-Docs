@@ -129,7 +129,7 @@ AMKR 在别的机器上、且浏览器能直连它时，用 `amkr_public_url` �
 
 ## 排查建议
 
-1. 先看 WebUI 的「AMKR 运维」页：`reachable` 为假说明地址、Key 或 AMKR 进程有问题。
-2. `missing` 非空时点一次「注册任务名」；`registered` 已有名字但调用仍失败，则去 AMKR 面板确认该任务指向的模型与 Key 是否可用。
+1. 先看 WebUI 阁楼的「AMKR」页：显示「断线了」（`reachable` 为假）说明地址、Key 或 AMKR 进程有问题。
+2. 有缺的任务时点一次「给所有伙伴补登记」；`registered` 已有名字但调用仍失败，则去 AMKR 面板确认该任务指向的模型与 Key 是否可用。
 3. 返回 `401` 表示 `amkr_local_api_key` 不是 AMKR 认可的本地授权 Key——它同时是 AMKR 的管理员凭据。
 4. AMKR 以 `--no-ops` 启动时，`/api/logs`、`/api/tool`、`/api/service/*`、`/api/integrations/*` 会 404，`/health` 报 `ops_enabled:false`，但任务与配置接口仍可用。

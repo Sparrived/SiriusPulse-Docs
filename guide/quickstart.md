@@ -20,7 +20,7 @@ WebUI 也提供创建、启动、停止和切换人格的页面。
 
 ## 3. 连接 AMKR
 
-Sirius Pulse 自身不再内置任何模型厂商实现，所有模型调用统一发往本地 [AMKR](https://github.com/Sparrived/auto-model-key-router)（`auto-model-key-router`，OpenAI 兼容路由）。请先跑起 AMKR，然后在 WebUI 的「全局设置」中填写：
+Sirius Pulse 自身不再内置任何模型厂商实现，所有模型调用统一发往本地 [AMKR](https://github.com/Sparrived/auto-model-key-router)（`auto-model-key-router`，OpenAI 兼容路由）。请先跑起 AMKR，然后在 WebUI「阁楼」的「设置」中填写：
 
 - `amkr_base_url`：AMKR 地址，默认 `http://127.0.0.1:8000`。
 - `amkr_local_api_key`：AMKR 的本地授权 Key，与 AMKR 自带面板的管理员凭据相同。**只用于建空间与注册任务名**——模型调用用的是建空间时按人格自动签发的推理 key，不需要你手填。
@@ -30,7 +30,7 @@ Sirius Pulse 自身不再内置任何模型厂商实现，所有模型调用统�
 
 Sirius Pulse 用**任务名**代替模型名：它把 `response_generate`、`memory_extract` 这类任务名直接填进请求的 `model` 字段，由 AMKR 查表换成真实模型。内置 13 个任务名，其中 `image_generate` 是生图工具专用，要单独绑定一个生图模型；`fallback_generate` 是 Gemini 内容策略拦截时的兜底通道，要绑定一个非 Google 模型（例如 `deepseek-v4.1-flash`）。
 
-到 WebUI 的「AMKR 运维」页查看连通性与各人格的 `registered` / `missing`，点一次「注册任务名」即可补齐缺失项。注册是只创建、不修改：已存在的任务一律不动。
+到 WebUI 阁楼的「AMKR」页查看连通性与各伙伴登记了哪些任务、缺哪些，点一次「给所有伙伴补登记」即可补齐缺失项。注册是只创建、不修改：已存在的任务一律不动。
 
 模型选择、温度、最大 token 和故障切换都在 AMKR 自带面板里按任务配置，Sirius Pulse 内没有模型或参数编辑入口。页面上还提供跳转 AMKR 面板的外链。
 

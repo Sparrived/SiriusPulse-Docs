@@ -84,13 +84,13 @@ Sirius Pulse 不再有 Provider 注册表，所有模型调用统一发往本地
 
 AMKR 把一个**任务名**解析成真实模型，因此框架把任务名本身填进 OpenAI 兼容请求的 `model` 字段。内置 9 个任务名：`cognition_analyze`、`memory_extract`、`response_generate`、`fallback_generate`、`work_mode_generate`、`plugin_generate`、`passive_tool`、`autonomy_generate`、`image_generate`。其中 `work_mode_generate` 专供工作模式，在 AMKR 面板里指向另一个模型即可让"工作期间"用上更强的模型；`autonomy_generate` 专供自主行为回合，见 [内置 Tool 参考 → 工作模式](../extensions/tool-builtin#工作模式work-mode)；`image_generate` 专供 [生图工具](../extensions/tool-builtin#image-generate)，它走 AMKR 的图像端点而不是 chat completions，因此**必须**在 AMKR 面板里绑定一个生图模型（例如 `gpt-image-2.5-flare`）；`fallback_generate` 在 Gemini 命中内容策略拦截时兜底，应绑定一个非 Google 模型（例如 `deepseek-v4.1-flash`），否则拦截发生时没有可切换的通道；`plugin_generate` 覆盖插件侧的全部生成，原 `plugin_analyze` / `plugin_render` / `plugin_raw` 已并入；主动发言原 `proactive_generate` 已并入 `response_generate`。
 
-**注册不等于能用。** 框架只负责把任务名**建出来**（`POST /api/tasks`），模型与采样参数一律留给 AMKR——那是它的权限。新建的任务是**没有模型**的，必须由运维在 AMKR 面板里各指定一个真实模型；在此之前调用它会 404（AMKR 会拿任务名去找同名模型）。这一条曾经造成过真实故障：`autonomy_generate` 未登记时，每个自主回合都 404，自主行为整整两天没有产出，而运维页只比对任务**名字**，显示一切正常。现在「AMKR 运维」页会把它单列为 `unbound`，新建任务时日志也会提醒去绑模型。
+**注册不等于能用。** 框架只负责把任务名**建出来**（`POST /api/tasks`），模型与采样参数一律留给 AMKR——那是它的权限。新建的任务是**没有模型**的，必须由运维在 AMKR 面板里各指定一个真实模型；在此之前调用它会 404（AMKR 会拿任务名去找同名模型）。这一条曾经造成过真实故障：`autonomy_generate` 未登记时，每个自主回合都 404，自主行为整整两天没有产出，而运维页只比对任务**名字**，显示一切正常。现在阁楼的「AMKR」页会把它单列出来（「还没绑模型」），新建任务时日志也会提醒去绑模型。
 
 框架**从不发送** `temperature` 与 `max_tokens`（`GenerationRequest` / `RawRequest` 已不含这两个字段），模型与采样参数一律由 AMKR 的任务定义决定；需要改某个固定值时改 AMKR 侧。
 
 隔离靠**凭据本身**：模型调用发的是该人格空间的**推理 key**，AMKR 据此决定请求落在哪个空间，请求头 `X-AMKR-Workspace` 因而被忽略（框架仍发送，仅为兼容旧版 AMKR）。框架按人格拼接空间名为 `<amkr_workspace>/<persona>`（例如 `sirius-pulse/sirius`）。AMKR 是共享单实例，并非多租户。工作空间由框架**显式创建**（`POST /api/workspaces`）：创建的那一刻是拿到该空间**两把凭据**的唯一时机，因此顺序是**先建空间拿凭据，再注册任务**。
 
-模型调用用的是推理 key 而不是 `amkr_local_api_key`——后者能增删供应商与 Key，不该出现在推理路径上；推理 key 缺失时引擎**不就绪**，不会回落。两把凭据分别存在 `data/global_config.json` 的 `amkr_panel_keys`（面板 key）与 `amkr_inference_keys`（推理 key），都不随全局配置接口回显；「AMKR 运维」页可就地嵌入所选人格的工作空间面板（面板是 AMKR 自己的页面，用量读数与任务增删改都在那里完成），并可在缺凭据时轮换推理 key。
+模型调用用的是推理 key 而不是 `amkr_local_api_key`——后者能增删供应商与 Key，不该出现在推理路径上；推理 key 缺失时引擎**不就绪**，不会回落。两把凭据分别存在 `data/global_config.json` 的 `amkr_panel_keys`（面板 key）与 `amkr_inference_keys`（推理 key），都不随全局配置接口回显；阁楼的「AMKR」页可就地嵌入所选人格的工作空间面板（面板是 AMKR 自己的页面，用量读数与任务增删改都在那里完成），并可在缺凭据时轮换推理 key。
 
 注册策略是**只创建缺失的任务名**，已存在的任务不比对、不更新，后续调整全部在 AMKR 面板里完成。详见 [AMKR 接入配置参考](../reference/provider-config) 与 [AMKR 接入模块](../modules/provider-system)。
 

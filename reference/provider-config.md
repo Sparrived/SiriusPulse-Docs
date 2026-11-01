@@ -41,7 +41,7 @@ curl -X POST http://127.0.0.1:8080/api/amkr/rotate-inference-key \
   -d '{"persona": "sirius"}'
 ```
 
-WebUI 的「AMKR 运维」页也提供这个按钮（标在缺凭据的人格上）。轮换后本框架会自动让该人格重建 provider，无需手动重启。
+WebUI 阁楼的「AMKR」页也提供这个按钮（缺凭据的伙伴上是「补一把推理钥匙」）。轮换后本框架会自动让该人格重建 provider，无需手动重启。
 
 ### 两个地址：服务端 vs 浏览器
 
@@ -117,5 +117,5 @@ AMKR 是共享单实例，允许多个 AI 服务同时使用，**不是多租户
 ## 相关配置
 
 - 全局配置的其余字段见 [全局配置参考](./global-config)。两把凭据分别存在 `amkr_panel_keys` 与 `amkr_inference_keys`（都是 `{工作空间: key}`），两个字段都**不随 `GET /api/global-config` 回显**。
-- WebUI 的「AMKR 运维」页报告连通性与注册状态，并可就地嵌入所选人格的工作空间面板；Sirius Pulse 内**没有**模型或采样参数编辑入口——面板本身就是 AMKR 的页面。
+- WebUI 阁楼的「AMKR」页报告连通性与注册状态，并可就地嵌入所选人格的工作空间面板；Sirius Pulse 内**没有**模型或采样参数编辑入口——面板本身就是 AMKR 的页面。
 - AMKR 应绑定 `127.0.0.1` 或内网地址；Sirius Pulse 的 `docker-compose.yml` 使用 `network_mode: host`，因此 `http://127.0.0.1:8000` 能直接到达 AMKR。但**面板是浏览器直接连 AMKR 的**：若 AMKR 地址是回环地址，只有从部署机本机打开运维页才加载得出来，远程访问请用同源反向代理。
