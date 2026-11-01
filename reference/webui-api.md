@@ -34,6 +34,12 @@ WebUI API 路由集中定义在 `sirius_pulse/webui/routes.py`。
 
 之所以没有写接口：从后台替她行动会让她变成"可配置"而不是"自主"。页面同样只读。
 
+## 她的生活
+
+`GET /api/persona/life` **只读**，返回 `now`（`phase` 作息时段、`asleep`、`wake_time` / `sleep_time`、`energy` 与 `energy_word`、`activity` 此刻在做什么、`next_block` 下一段日程、`life_date`）、`self_note`（近况、兴趣、明天想做的事）、`agenda`（`?date=YYYY-MM-DD` 那天的日程，默认今天；每段含 `start` / `end` / `activity` / `project_id` / `kind`（`work` / `routine`）/ `status`（`planned` / `doing` / `done` / `skipped` / `missed`）/ `outcome` / `reason`，没有则为 `null`）、`projects`（进行中的在前，含最近 8 条进度）与 `works`（有作品的项目及字数）。数据来自 `memory/life/`。
+
+`GET /api/persona/life/works/{project_id}` 返回一份作品：`project` 与 `markdown`。`project_id` 必须形如 `p-xxxxxxxx`，否则 400；不存在 404。查看不会创建任何文件。`memory/life/` 下的变化通过 WebSocket 资源 `life` 推送。
+
 ## 工作模式
 
 `GET /api/persona/work-mode` 返回每次工作模式的轨迹（`memory/work_mode/sessions.json`）：`goal`（她进去准备做什么）、`source`（`chat` 她自己进去的 / `autonomy` 自主回合 / `scheduled` 定时任务回合）、`task_name`（这次用的任务名，即 AMKR 的模型入口）、`steps`（逐轮的正文、工具调用与工具结果、`send_midway_msg` 发出的话）、`result`（退出时给出的工作结果）、`status`（`running` / `completed` / `aborted`）与起止时间。`summary` 给出累计次数、已完成数、进行中数、步骤总数与最近一次的目标；`limit` 可限制返回条数（1–100，默认 50），按时间倒序。同一次响应还带 `settings.task_name`（当前设置）与 `task_options`（可选任务名及其中文标签，即 `/api/models` 的同一份目录）。
