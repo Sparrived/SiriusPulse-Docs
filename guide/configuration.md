@@ -13,7 +13,7 @@ Sirius Pulse 的配置分为全局配置（含 AMKR 连接）、人格配置、�
 | `webui_port` | WebUI 端口，默认 `8080`。 |
 | `napcat_install_dir` | NapCat 安装目录。 |
 | `log_level` | 日志级别。 |
-| `max_sentence_chars` | 回复切分相关的句子长度参考值。 |
+| `max_sentence_chars` | 平时说话每句大约多长的习惯值。它不是硬上限：需要解释清楚一件事，或被要求说详细时，她可以放开说完整。 |
 | `amkr_base_url` | AMKR 地址，默认 `http://127.0.0.1:8000`。 |
 | `amkr_local_api_key` | AMKR 本地授权 Key，同时也是 AMKR 面板的管理员凭据；WebUI API 只回显掩码。 |
 | `amkr_workspace` | 本应用在共享 AMKR 中的命名空间前缀，默认 `sirius-pulse`。 |
