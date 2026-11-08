@@ -48,3 +48,15 @@ await self.ctx.dispatch_proactive_message(
 ## 返回值
 
 返回值使用 `PluginResponse`，包含 `success`、`data`、`text`、`error`、`render_mode`、`image_urls`、`message_group` 和 `metadata`。
+
+同时返回 `text` 和 `message_group`（图片、语音、文件等）时，宿主把文字放在最前面，与 `message_group` 合成**一条**消息发出，说明与图片不会被拆开或丢失：
+
+```python
+return PluginResponse.ok(
+    text="AMKR 账号资源 · 3 项（已脱敏）",
+    message_group=MessageGroup([ImageSegment("base64://...")]),
+)
+# 群里收到：「AMKR 账号资源 · 3 项（已脱敏）」+ 图片，同一条消息
+```
+
+`message_group` 里已经含有这段文字时（例如插件需要把文字放在图片之后或 `@` 之后），宿主不会再补一遍。`llm` 模式下补在前面的是人格生成后的文字。
