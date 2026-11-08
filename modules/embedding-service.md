@@ -6,7 +6,7 @@
 
 ## 职责
 
-向量化由 **AMKR** 提供，本框架不再自己运行模型：`client.py` 封装对 AMKR `/v1/embeddings` 的同步调用，供记忆单元与检索流程使用。请求带的模型名来自 `global_config.json` 的 `embedding_model`（默认 `BAAI/bge-m3`），凭据用该人格工作空间的**推理 key**。
+向量化由 **AMKR** 提供，本框架不再自己运行模型：`client.py` 封装对 AMKR `/v1/embeddings` 的同步调用，供记忆单元与检索流程使用。调用失败会让客户端标记为不可用并冷却 30 秒，之后再次访问 `available` 时重新探测 `/health`，不会永久停用语义检索。聊天回合里的查询编码在后台线程预取、超时 8 秒，不阻塞事件循环。请求带的模型名来自 `global_config.json` 的 `embedding_model`（默认 `BAAI/bge-m3`），凭据用该人格工作空间的**推理 key**。
 
 ## 关键协作
 
