@@ -45,3 +45,30 @@ async def run(text: str, **kwargs):
 | `bookkeeping` | 她私人的记录工具：同轮正文只是草稿不发出；整轮只调它时写完直接作答。 |
 
 内置 Tool 还可以在模块里导出两个钩子：`request_source_optional(params) -> bool`（按明确 ID 查找时可以不选来源，保留调用者做范围判断但不授予写权限），以及 `after_success(result, *, engine_context, group_id)`（成功后在事件循环上调用；`run()` 可能在线程里执行，需要排期后台工作的放这里）。投递成功的内置 Tool 可以在结果的 `internal_metadata["history_receipt"]` 里给出 `content` / `tags` / `platform_message_id`，框架会把它写进聊天历史，让她下一轮知道已经发过。
+
+## 引擎上下文
+
+被动 Tool 的 `create_background_tasks(ctx)` / `create_triggers(ctx)` 和内置 Tool 的 `engine_context` 参数拿到的都是同一个上下文对象。它的完整类型 `ToolEngineContext` 由几个按领域划分的小接口组成（`sirius_pulse.tools.engine_context`），写 Tool 时按需只依赖用到的那几个：
+
+| 接口 | 能力 |
+|---|---|
+| `WorkspaceAccess` | 人格目录、配置、数据存储、人格本身、内心日志与事件 |
+| `ToolingAccess` | 工具注册表、执行器、工具描述 |
+| `GenerationAccess` | 直接生成文本或图片（不经过工具循环） |
+| `AgentTurnAccess` | 让她再跑一轮带工具的回合：定时任务、后台结果回调、自主回合、日程里的工作 |
+| `DeliveryAccess` | 往聊天里投递消息、分享、表情包，可说给谁听，平台适配器与群管理员判断 |
+| `ConversationAccess` | 活跃会话、最近消息、写入记忆与群状态、请求整理小本 |
+| `LifeAccess` | 心情的起伏与回落、她认识的人 |
+| `PeopleAccess` | 人物服务、视觉资产服务、按调用来源创建的权限上下文 |
+| `UserLookupAccess` | 按平台账号或名字找人、Bot 自己在各平台的身份 |
+
+```python
+from sirius_pulse.tools.engine_context import WorkspaceAccess
+
+
+def create_background_tasks(ctx: WorkspaceAccess):
+    store = ctx.get_data_store("my_tool")
+    ...
+```
+
+拆分没有删减任何能力：原来 `ToolEngineContext` 上的方法都还在，按完整上下文写的 Tool 不用改。以前只能用 `getattr` 试探的表情包、群管理员判断与用户查询，现在也是正式接口。实现按同样的领域拆在 `sirius_pulse/core/tool_context/`，每个领域一个 mixin，由 `core/tool_engine_context.py` 组合。
