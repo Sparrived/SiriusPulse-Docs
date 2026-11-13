@@ -21,6 +21,20 @@
 4. 执行：调用 Brain 与 AMKR，处理工具调用，发送文本、图片或表情。
 5. 后台更新：写入记忆、Token、语义画像、记忆单元和事件记录。
 
+### 参与决策与可观测性
+
+是否开口由 `core/participation.py` 的纯规则策略决定。时段曲线（`reply_time_curve_points`）和她自己的作息（`life_factor`）只压低**主动插话**（回应需求、自然接话）；被直接 @、点名或私聊时，时段系数只能加成、不会把分数压到 1.0 以下，深夜曲线调成 0 也不会吞掉有人在叫她的消息。
+
+`Pipeline.pre_filter` 的每次结论（包括命令前缀、过短消息、群里过热这类硬规则拒绝）都会写进 `persona.db` 的 `decision_events`，WebUI「情绪天气 → 她怎么决定要不要说话」据此展示原因分布。交给群调度器裁决的消息不在这里记录。认知事件与决策事件只用于事后分析，后台每天按 `cognition_retention_days`（默认 30 天）清理一次。
+
+### 事件循环与写盘
+
+所有人格跑在同一个进程里，任何阻塞调用都会让所有群一起停顿，所以：embedding 请求、整组记忆单元读写、归档补写、群调度的 SQLite 事务都在 `asyncio.to_thread` 里执行；`persist_group_state` 只标记脏数据，约每秒合并写一次（关停时同步写完）。SQLite 统一使用 WAL + `synchronous=NORMAL`。不同群的生成可以并行，上限由 `max_concurrent_llm_calls` 控制（默认 3，同一群的回合始终串行）。
+
+### 投递节奏
+
+回复由 NapCat 适配器按句子与标点拆成多条（`_split_reply_for_delivery`，最多约三条），段间按字数模拟打字停顿（`human_reply_min_delay_seconds` / `human_reply_max_delay_seconds`），同一条回复的停顿总和不超过 `human_reply_total_delay_seconds`（默认 6 秒）。每个群 / 私聊各自限速每秒一条，互不阻塞。
+
 ## Brain 调用
 
 `Brain` 支持 `ChatRequest`、`ChatResult`、`RawRequest`、pre-hook、post-hook 和工具调用。它不选择真实模型：`ModelRouter` 把认知任务解析成 AMKR 任务名，`OpenAICompatibleProvider` 再把这个名字作为 `model` 字段发往 AMKR。除任务名外的本地参数只有超时与重试（`orchestration.json` 的 `task_timeout` / `task_retries`）。
