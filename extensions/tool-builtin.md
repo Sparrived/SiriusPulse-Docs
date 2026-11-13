@@ -6,7 +6,8 @@
 
 | 文件 | 功能 |
 |---|---|
-| `bash.py` | 在当前容器内执行标准 Bash 命令，并通过代理管理其他容器；支持项目级 `crontab -l`、`crontab -r` 和 `printf ... | crontab -`。 |
+| `bash.py` | 在当前容器内执行标准 Bash 命令，并通过代理管理其他容器；支持项目级 `crontab -l`、`crontab -r` 和 `printf ... | crontab -`；超时的命令默认转入后台并返回任务 ID。 |
+| `background_task.py` | 列出、查看、停止交给后台的任务：超时转入后台的 bash 命令与后台生图任务。 |
 | `autonomy.py` | 人格自己的一天：早上排日程、白天按日程推进自己的项目、晚上回顾，并按规则投递她想说的话。不对模型可见。 |
 | `life_project.py` | 她的长期项目：开项目、把成果写进作品、记下进度与下一步、做完或放下。 |
 | `intend_pursue.py` | 让她登记"想自己弄明白什么、为什么在意"，只登记不立刻去做，留给晨间计划排进日程或开成项目。 |
@@ -75,6 +76,7 @@
 - 生成结果落在 `{persona}/tool_data/artifacts/image_generate/images/<job_id>.<ext>`，是人格数据目录里的普通文件，随人格数据一起保存；扩展名按实际图片格式（通常是 `.png`，也可能是 `.jpg` / `.webp`）。物化的参考图在 `references/<job_id>/` 下。框架不会自动清理这两处文件，长期运行请随人格数据一起备份或手动清理。
 - 任务队列持久化在 `{persona}/tool_data/image_generate.json`（键 `jobs`），人格重启不会丢。重启时残留的"生成中"任务会被标成失败，并把错误回调给 Agent；不会重新请求生图或直接群发失败通知。
 - 后台轮询队列时一次只画一张：`max_pending_jobs` 限制的是**排队数量**，不是并发数。
+- 可以用 [`background_task`](#background-task) 停止：排队中的任务直接撤下（受管人物生图同时退还额度）；正在画的打断等待，如果请求已经发给生图服务，额度无法退回（受管任务记为结果未知）。停止的任务记为 `cancelled`、错误码 `stopped_by_request`，不再回调 Agent。
 - 生图是外部副作用（会消耗 AMKR 生图额度），自主回合里调用会被 ToolExecutor 拒绝；它只在有会话上下文的聊天回合里可用。没有群上下文的调用（框架兜底或测试直接调用）仍会生成，只是没有可回发的群，图片留在磁盘上、跳过通知。
 
 配置（WebUI 的 `image_generate` 配置表单）：
@@ -275,6 +277,31 @@ WebUI 的 **日记 → 她的一天** 按天列出她排的日程、每段做了
 `bash` 同时接管模型常见的项目级 `crontab` 用法：`crontab -l` 查看当前聊天的任务，`crontab -r` 删除当前聊天的任务，`echo '*/5 * * * * echo hello' | crontab -` 或 `printf '%s\\n' '0 8 * * 1-5 echo weekday' | crontab -` 注册任务。它只写入人格的 `tool_data/bash.json`，不会修改操作系统 crontab；调度器触发后会把命令输出注入正常的主动回复链路，主动回复仍可继续调用工具。
 
 在 WebUI 的 `bash` 配置表单中调整 `max_timeout_seconds` 和 `max_output_chars`。配置保存在 `{persona}/tool_data/bash.json`，每次调用都会重新读取。
+
+### 超时转入后台
+
+命令超过本次 `timeout_seconds` 时默认不会被结束，而是转入后台继续跑：工具立刻返回成功和任务 ID（`bash_xxxxxxxx`）以及目前为止的输出，模型这一轮照常继续。命令结束后，人格的后台轮询会像生图那样把退出码和输出末尾**内部回调**给 Agent（按工作模式续跑一轮），不会自动发到聊天。
+
+- 标准输出与错误按时间顺序写进 `{persona}/runtime/bg/<task_id>.log`；回调和 `background_task status` 只带末尾一段，被省略时会附上日志路径，可以用 `bash` 自己读完整输出。前台正常结束的命令日志用完即删。
+- 命令在独立进程组里运行，停止或超过存活上限时整组结束，管道里的子进程不会残留。人格停止时会结束她名下所有后台命令。
+- 后台登记只在内存里：进程本身活不过重启，重启后不会恢复，也不会回调。
+- 调用时传 `background_on_timeout=false` 可以让超时直接结束命令（旧行为）；`crontab` 定时任务执行的命令总是这样，因为它要立刻拿输出写消息。
+- 被 `background_task` 主动停止的命令不再回调；超过存活上限被结束的会以失败回调。
+
+| 配置项 | 默认 | 范围 | 说明 |
+|---|---|---|---|
+| `max_background_jobs` | 3 | 0–10 | 同时在后台运行的超时命令上限；满了时超时的命令直接结束并说明原因。0 表示不转后台。 |
+| `max_background_seconds` | 1800 | 60–86400 | 转入后台的命令最长运行多久，到点整组结束并以失败回调。 |
+
+## background_task
+
+`background_task` 是交给后台的任务的统一入口，覆盖超时转入后台的 `bash` 命令和 `image_generate` 的生图任务：
+
+- `action=list`：列出当前会话仍在进行的后台任务（运行中、排队中）。
+- `action=status` + `task_id`：查看单个任务；bash 任务附带最近的输出，失败的生图任务附带原因。
+- `action=stop` + `task_id`：停止任务。已经结束的任务原样报告，不重复处理；停止的任务都不再回调 Agent。
+
+只能看到、停止**当前会话**发起的任务；developer 可以管理全部任务。`list` / `status` 是只读调用（不参与同轮去重，失败可重试），`stop` 按破坏性操作处理；停止自己的任务不算对外投递，自主回合里也可以用。
 
 每个人格的运行时目录是 `{persona}/runtime/`，家目录是 `{persona}/home/`，两者都位于持久化的 `/app/data` 下。Bash 会把 `HOME` 指向 `{persona}/home/`，`cwd` 留空或填 `.`（以及 `~`）也解析到那里，因此她的默认落脚点就在挂载卷内，容器重建后依然存在。Bash 会自动加入运行时 `bin` 和 npm 全局 `bin`，并设置 `SIRIUS_RUNTIME_ROOT`、`SIRIUS_RUNTIME_BIN`、`SIRIUS_HOME`、`PIP_TARGET`、`NPM_CONFIG_PREFIX`、`PIP_CACHE_DIR` 和 `NPM_CONFIG_CACHE`。由于 `bash -lc` 会先读取 `/etc/profile`、而该文件会无条件重置 `PATH`，这些变量会在命令前奏里重新 export 一次，否则注入的运行时路径会被丢掉。运行时安装的 Python 包、npm 全局包和放入 `$SIRIUS_RUNTIME_BIN` 的用户态二进制会在容器重建后保留，例如：
 
