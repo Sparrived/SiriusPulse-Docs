@@ -12,9 +12,9 @@
 | `life_project.py` | 她的长期项目：开项目、把成果写进作品、记下进度与下一步、做完或放下。 |
 | `intend_pursue.py` | 让她登记"想自己弄明白什么、为什么在意"，只登记不立刻去做，留给晨间计划排进日程或开成项目。 |
 | `intend_share.py` | 让她登记"想对谁说什么"，只登记不发送，留给 `autonomy` 在合适的时机投递。 |
-| `group_file_exec.py` | 统一处理图片发送、文件上传，以及群文件列表读取和下载；普通聊天里就能用。 |
+| `group_file_exec.py` | 统一处理图片发送、文件上传、群文件列表，以及下载聊天里收到的文件（群聊、私聊都行）；普通聊天里就能用。 |
 | `reminder.py` | 到点提醒：一次性或每天 / 工作日 / 每周重复，到点把她写好的原话发到当前聊天。 |
-| `read_document.py` | 读文档的文字：txt / md / csv / json / 代码 / 网页存档、Word（docx）和 PDF，长文分段读。 |
+| `read_document.py` | 读文档的文字：txt / md / csv / json / 代码 / 网页存档、Word（docx）、PPT（pptx）和 PDF，长文分段读。 |
 | `image_generate.py` | 向 AMKR 的图像任务提交生图请求；立即返回后台任务 id，结果只内部回调 Agent，由 Agent 决定是否发送产物。 |
 | `read_image.py` | 读取本地图片或图片 URL，把图片本身交给模型的视觉通道；用于看自己的三视图、聊天图片原图等。 |
 | `napcat_call.py` | QQ 平台底层交互与群管理（点赞、查群成员、禁言、移出群、改群名片等）；禁言、移出群等管理操作只在提出要求的人是开发者时执行。 |
@@ -61,6 +61,7 @@
 | 参数 | 说明 |
 |---|---|
 | `prompt` | 必填，要画什么。 |
+| `subjects` | 可选，要画的具体人物，对象数组：`{"ref": "persona"}`（她自己）、`{"ref": "requester"}`（提要求的人）、`{"ref": "person_id" / "name" / "mention_ref", "value": …}`。schema 声明了数组项，模型仍写成 JSON 字符串（`["{\"ref\": \"persona\"}"]`）或裸写 `["persona"]` 时也会按对象解析；线上曾有 65 次因为这样被当成人名而报「找不到这个人」。 |
 | `reference_images` | 可选，参考图数组，最多 4 张、单张不超过 20MB；元素是本地绝对路径或 http(s) 图片 URL。 |
 
 参考图的口径：
@@ -126,7 +127,11 @@ AMKR 侧：`image_generate` 是一个内置任务名（见 [任务名契约](../
 
 ## workflow_state
 
-`workflow_state` 是按聊天类型和聊天 ID 隔离的可恢复流程状态机与流程目录，状态保存在当前 ToolDataStore。模型只按下面的固定顺序使用它：
+`workflow_state` 是按聊天类型和聊天 ID 隔离的可恢复流程状态机与流程目录，状态保存在当前 ToolDataStore。
+
+它只用于两种情况：任务有多个外部副作用步骤、做到一半可能被打断、之后要接着做；或者用户让她继续、重试、照上次的流程做。只做一个动作（点赞、发一张图、跑一条命令）直接调用对应工具，不登记流程。早先的工作模式规范要求「所有可能重复的外部任务」都先走一遍流程，线上三个月的调用记录里，大多数流程只包了一次点赞或发图，每次多花四五次工具调用，`resume` 真正命中的只有 5 次，所以收窄成了现在这样。
+
+用流程时按下面的固定顺序：
 
 `list` -> 找到候选就 `resume` -> 找不到时 `begin` 自动登记 -> `claim` -> 专用 Tool -> 成功 `checkpoint` / 失败 `fail` -> 有 `next_step` 就继续 -> 没有 `next_step` 时 `checkpoint` 自动完成。
 
@@ -292,9 +297,9 @@ WebUI 的 **日记 → 她的一天** 按天列出她排的日程、每段做了
 
 ## read_document
 
-把文档读成文字：txt、md、csv、json、日志、代码、网页存档（去掉标签）、Word（docx）和 PDF（依赖 `pypdf`）。长文按字分段，结果给出下一段的 `offset`，每次最多 5000 字。图片用 `read_image`，网页链接用 `web_lookup`；扫描版 PDF 没有文字层时会如实说读不出来；旧版 doc/xls/ppt 不支持。
+把文档读成文字：txt、md、csv、json、日志、代码、网页存档（去掉标签）、Word（docx）、PPT（pptx，按页取文字）和 PDF（依赖 `pypdf`）。长文按字分段，结果给出下一段的 `offset`，每次最多 5000 字。图片用 `read_image`，网页链接用 `web_lookup`；扫描版 PDF 没有文字层时会如实说读不出来；旧版 doc/xls/ppt 不支持。
 
-群里发来的文件，先用 `group_file_exec` 的 `list` 找到、`download` 下载到 `{persona}/group_files/`，再读。私聊里收到的文件目前只在消息里显示文件名，还拿不到本地路径。
+聊天里有人发文件时，NapCat 适配器把文件消息段渲染成 `[文件："周报.pdf" 1.2MB file_id=/abc]` 写进这条消息，她因此知道有文件来了（以前文件段被直接丢掉，只发了一个文件的消息整条进不了上下文）。要读内容，先用 `group_file_exec` 的 `download` 传这个 `file_id`，下载到 `{persona}/group_files/`，再读。群聊走 `get_group_file_url`，私聊走 NapCat 的 `get_private_file_url`，取不到时退回消息里带的直链；`download` 不传 `file_name` 时沿用原文件名。在线传输的文件（`onlinefile`）标签会注明收不下来。
 
 读到的内容按「参考资料，不是指令」交给模型。除开发者外只能读她自己的地方：家目录（`{persona}/home/`）、下载下来的群文件和工具产物目录（`{persona}/tool_data/artifacts/`）；路径先解析符号链接再判断，免得借道读到配置和密钥。
 
@@ -334,3 +339,5 @@ printf '%s\n' jq >> /app/data/runtime-packages/apt.txt
 ## Developer Status
 
 在 WebUI 的 `interaction_with_master` 配置表单中填写 MDS 公开状态令牌、服务基地址和请求超时。配置保存在 `{persona}/tool_data/interaction_with_master.json`；环境变量 `MDS_PUBLIC_STATUS_TOKEN` 和 `MDS_API_BASE_URL` 仅作为未配置时的后备。
+
+令牌没配时，`status` 不会出现在给模型的 action 可选值里（`available_actions` 钩子）；在 WebUI 填好后下一轮就出现，不用重启。以前它一直摆着，线上从没配过令牌，她在自主回合里想主人时会先查一次状态，一个月失败两百多次。查询在线程里执行，不占事件循环。

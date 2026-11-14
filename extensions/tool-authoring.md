@@ -30,7 +30,7 @@ async def run(text: str, **kwargs):
 | `silent` | `false` | 这次调用本身就是回复（例如发了一张图）：同轮伴随的正文不再单独发出。 |
 | `allowed_when_self_initiated` | `false` | 即使有外部副作用，也允许在自主回合里使用（只记录、不投递的工具）。 |
 | `work_mode_only` | `false` | 重工具：只在工作模式里出现在工具列表中，普通聊天只看得到 `enter_work_mode`。 |
-| `redact_logs` | `false` | 参数与结果不进通用日志、遥测和 AgentTurn 摘要（人物资料、私有资产、小本）。 |
+| `redact_logs` | `false` | 参数与结果不进通用日志、遥测和 AgentTurn 摘要（人物资料、私有资产、小本）。失败时遥测仍记录结果里的错误码（`code`，仅 snake_case 标识符），排查时知道是哪类失败。 |
 | `chat_scoped` | `false` | 只读写某个具体聊天里的内容：没有可信聊天来源的自主回合既看不到也调不了。 |
 | `action_param` | `"action"` | 多 action 工具里，哪个参数表示 action。 |
 | `actions` | `{}` | 按 action 覆盖上面的 `side_effect` / `retry_safe` / `silent` / `engagement_exempt`，例如 `{"status": {"side_effect": "read_only", "retry_safe": True}}`。 |
@@ -44,7 +44,12 @@ async def run(text: str, **kwargs):
 | `request_source_params` | 与 `request_source` 搭配：只有这些参数之一有值时才需要绑定来源（例如生图只在画具体人物时）。 |
 | `bookkeeping` | 她私人的记录工具：同轮正文只是草稿不发出；整轮只调它时写完直接作答。 |
 
-内置 Tool 还可以在模块里导出两个钩子：`request_source_optional(params) -> bool`（按明确 ID 查找时可以不选来源，保留调用者做范围判断但不授予写权限），以及 `after_success(result, *, engine_context, group_id)`（成功后在事件循环上调用；`run()` 可能在线程里执行，需要排期后台工作的放这里）。投递成功的内置 Tool 可以在结果的 `internal_metadata["history_receipt"]` 里给出 `content` / `tags` / `platform_message_id`，框架会把它写进聊天历史，让她下一轮知道已经发过。
+内置 Tool 还可以在模块里导出三个钩子：
+- `request_source_optional(params) -> bool`：按明确 ID 查找时可以不选来源，保留调用者做范围判断，但不授予写权限。
+- `after_success(result, *, engine_context, group_id)`：成功后在事件循环上调用。`run()` 可能在线程里执行，需要排期后台工作的放这里。
+- `available_actions(data_store) -> list[str] | None`：按当前配置可用的 action。每次组装工具列表时调用，返回值之外的 action 会从 schema 的可选值里拿掉，一个都不剩就整个工具不给模型；返回 `None` 表示不限制。它在事件循环上跑，只能读已加载的存储；要感知 WebUI 的改动用 `data_store.reload_if_changed()`，文件没变时它只多一次 stat。
+
+投递成功的内置 Tool 可以在结果的 `internal_metadata["history_receipt"]` 里给出 `content` / `tags` / `platform_message_id`，框架会把它写进聊天历史，让她下一轮知道已经发过。
 
 ## 引擎上下文
 

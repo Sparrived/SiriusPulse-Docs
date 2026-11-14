@@ -10,7 +10,7 @@ Tool 是模型可自主调用的工具系统。它不同于 Plugin：Tool 服务
 - 注册与加载：`sirius_pulse/tools/registry.py`。
 - 执行：`sirius_pulse/tools/executor.py`。
 - 鉴权：`sirius_pulse/tools/security.py`。
-- 执行记录：`sirius_pulse/tools/telemetry.py`。
+- 执行记录：`sirius_pulse/tools/telemetry.py`，写在 `{persona}/tool_data/.telemetry.jsonl`，每次调用一行；失败时带 `error_code`（工具结果里的稳定错误码）。
 
 ## 核心模型
 
