@@ -58,7 +58,7 @@ async def run(text: str, **kwargs):
 | `AgentTurnAccess` | 让她再跑一轮带工具的回合：定时任务、后台结果回调、自主回合、日程里的工作 |
 | `DeliveryAccess` | 往聊天里投递消息、分享、表情包，可说给谁听，平台适配器与群管理员判断 |
 | `ConversationAccess` | 活跃会话、最近消息、写入记忆与群状态、请求整理小本 |
-| `LifeAccess` | 心情的起伏与回落、她认识的人 |
+| `LifeAccess` | 心情的起伏与回落、她认识的人、她的作息（睡着的时段不对外发消息） |
 | `PeopleAccess` | 人物服务、视觉资产服务、按调用来源创建的权限上下文 |
 | `UserLookupAccess` | 按平台账号或名字找人、Bot 自己在各平台的身份 |
 

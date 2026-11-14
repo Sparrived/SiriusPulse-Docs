@@ -15,12 +15,15 @@
 | `group_file_exec.py` | 统一处理图片发送、文件上传，以及群文件列表读取和下载。 |
 | `image_generate.py` | 向 AMKR 的图像任务提交生图请求；立即返回后台任务 id，结果只内部回调 Agent，由 Agent 决定是否发送产物。 |
 | `read_image.py` | 读取本地图片或图片 URL，把图片本身交给模型的视觉通道；用于看自己的三视图、聊天图片原图等。 |
-| `group_management.py` | 统一处理 QQ 群管理员操作。 |
+| `napcat_call.py` | QQ 平台底层交互与群管理（点赞、查群成员、禁言、移出群、改群名片等）；禁言、移出群等管理操作只在提出要求的人是开发者时执行。 |
 | `interaction_with_master.py` | 与主人沟通并查询主人的公开设备状态。 |
 | `desktop_screenshot.py` | 获取桌面截图。 |
 | `web_lookup.py` | Web 查询。 |
-| `qq_member_info.py` | 查询 QQ 群成员信息。 |
-| `qq_like.py` | 通过已连接的 NapCat 适配器给 QQ 用户点赞，并支持复用当前会话上一次成功目标。 |
+| `memory_search.py` | 检索没进入本轮上下文的长期记忆和当前聊天的旧原文（只读）。 |
+| `persona_notebook.py` | 当前聊天的短期便签：约定、待办与临时状态；内容自动在上下文里，只需写。 |
+| `person_query.py` | 查询可见范围内的人物资料：称呼、属性声明、关系、相关记忆与形象。 |
+| `person_update.py` | 依据来源消息维护人物称呼、属性声明，确认待确认的变更，登记原创角色。 |
+| `visual_asset_manage.py` | 维护受管人物视觉素材（立绘、三视图、外观参考）与相关授权。 |
 | `workflow_state.py` | 读写按聊天会话隔离的轻量流程检查点。 |
 | `read_skill.py` | 读取当前人格的 Agent Skill 文档和同目录参考文件。 |
 
@@ -48,10 +51,6 @@
 - 指定 `skill_name` 时默认读取 `SKILL.md`。
 - 大文件使用 `offset` 和 `max_chars` 分段读取。
 - `relative_path` 只能访问当前 Skill 目录内的文件；脚本执行仍使用 `bash`。
-
-## qq_like
-
-`qq_like` 是 QQ 点赞的唯一执行入口，直接复用当前 NapCat bridge 的 `send_like` API。用户明确要求重复上一次点赞且没有新目标时，传 `reuse_last=true`；上一次调用必须成功，失败调用不会覆盖已保存目标。
 
 ## image_generate
 
@@ -206,7 +205,7 @@ AMKR 侧：`image_generate` 是一个内置任务名（见 [任务名契约](../
 
 `autonomy` 的不发送窗口就是她的睡眠时段（`wake_time` / `sleep_time`，默认 07:30 起、23:30 睡，可以设成凌晨两点半才睡的夜猫子）。被拦下的意图**保持待发**，不会被写成已说，她醒来后原样发出去；这里刻意不消耗 `share_cooldown_seconds`。醒来时也不会轰炸：积压按冷却一条条摊开，第一个钟头只放出第一条。
 
-`interaction_with_master` 在自主回合里仍受固定的 23:00–08:00 夜间窗口约束：她主动发的私聊会原样存成一条受众是主人私聊的 `tell` 意图，由 `autonomy` 在她醒来后投递。判定按固定 UTC+8（中国无夏令时），不依赖系统时区。
+`interaction_with_master` 在自主回合里同样按她的作息判断是否睡着（`autonomy` 配置里的 `wake_time` / `sleep_time`，默认 07:30 起、23:30 睡）：睡着时她主动发的私聊会原样存成一条受众是主人私聊的 `tell` 意图，由 `autonomy` 在她醒来后投递。正在进行的对话里的回复不受影响。判定按固定 UTC+8（中国无夏令时），不依赖系统时区；拿不到引擎上下文时退回固定的 23:00–08:00 窗口。
 
 ### 记忆不等于分享
 
